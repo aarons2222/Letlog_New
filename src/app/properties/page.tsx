@@ -1,3 +1,11 @@
+/**
+ * #4 — Document access per role (TODO):
+ * When document management is added to properties:
+ * - Landlord: full access to all property documents (deeds, certificates, compliance docs)
+ * - Tenant: read-only access to tenancy agreement, inventory, and notices
+ * - Contractor: access only to job-specific documents (scope of work, safety notes) after award
+ * Filter document queries by user role before rendering.
+ */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { 
-  ArrowLeft, Plus, Search, Home, MapPin, Bed, Bath, 
+  ArrowLeft, Plus, Search, Home, MapPin, Bed, Bath, Building2,
   Users, AlertTriangle, MoreVertical, Edit, Trash2, Eye
 } from "lucide-react";
 import {
@@ -17,53 +25,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
-// Mock data - will be replaced with Supabase
-const mockProperties = [
-  {
-    id: "1",
-    address_line_1: "42 Oak Lane",
-    address_line_2: "Flat 2",
-    city: "Lincoln",
-    postcode: "LN1 3BT",
-    property_type: "flat",
-    bedrooms: 2,
-    bathrooms: 1,
-    status: "occupied",
-    tenant_count: 1,
-    compliance_status: "valid",
-    rent_amount: 850,
-    image: null,
-  },
-  {
-    id: "2",
-    address_line_1: "15 High Street",
-    city: "Lincoln",
-    postcode: "LN2 1HN",
-    property_type: "house",
-    bedrooms: 3,
-    bathrooms: 2,
-    status: "occupied",
-    tenant_count: 2,
-    compliance_status: "expiring",
-    rent_amount: 1200,
-    image: null,
-  },
-  {
-    id: "3",
-    address_line_1: "8 Mill Road",
-    city: "Lincoln",
-    postcode: "LN3 4JP",
-    property_type: "house",
-    bedrooms: 4,
-    bathrooms: 2,
-    status: "vacant",
-    tenant_count: 0,
-    compliance_status: "valid",
-    rent_amount: 1450,
-    image: null,
-  },
-];
+interface Property {
+  id: string;
+  address_line_1: string;
+  address_line_2: string | null;
+  city: string;
+  postcode: string;
+  property_type: string;
+  bedrooms: number;
+  bathrooms: number;
+  status: string;
+  tenant_count: number;
+  compliance_status: string;
+  rent_amount: number;
+  image: string | null;
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -79,9 +58,88 @@ const itemVariants = {
 };
 
 export default function PropertiesPage() {
-  const [properties, setProperties] = useState(mockProperties);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProperties() {
+      const supabase = createClient();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch properties with related tenancies and compliance records
+        const { data: props, error } = await supabase
+          .from('properties')
+          .select(`
+            *,
+            tenancies(id, status, rent_amount, tenancy_tenants(id, tenant_id)),
+            compliance_records(id, expiry_date)
+          `)
+          .eq('landlord_id', user.id)
+          .eq('is_active', true);
+
+        if (error) {
+          console.error('Error fetching properties:', error);
+          toast.error('Failed to load properties');
+          setIsLoading(false);
+          return;
+        }
+
+        const now = new Date();
+        const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        const mapped: Property[] = (props || []).map((p: any) => {
+          const activeTenancy = p.tenancies?.find((t: any) => t.status === 'active');
+          const tenantCount = activeTenancy?.tenancy_tenants?.length || 0;
+          const status = activeTenancy ? 'occupied' : 'vacant';
+          const rentAmount = activeTenancy?.rent_amount || 0;
+
+          // Compute compliance status
+          let complianceStatus = 'valid';
+          if (p.compliance_records && p.compliance_records.length > 0) {
+            const hasExpired = p.compliance_records.some((c: any) => new Date(c.expiry_date) < now);
+            const hasExpiring = p.compliance_records.some((c: any) => {
+              const exp = new Date(c.expiry_date);
+              return exp >= now && exp <= thirtyDaysFromNow;
+            });
+            if (hasExpired) complianceStatus = 'expired';
+            else if (hasExpiring) complianceStatus = 'expiring';
+          }
+
+          return {
+            id: p.id,
+            address_line_1: p.address_line_1,
+            address_line_2: p.address_line_2,
+            city: p.city,
+            postcode: p.postcode,
+            property_type: p.property_type,
+            bedrooms: p.bedrooms || 0,
+            bathrooms: p.bathrooms || 0,
+            status,
+            tenant_count: tenantCount,
+            compliance_status: complianceStatus,
+            rent_amount: rentAmount,
+            image: p.photos?.[0] || null,
+          };
+        });
+
+        setProperties(mapped);
+      } catch (err) {
+        console.error('Error:', err);
+        toast.error('Failed to load properties');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchProperties();
+  }, []);
 
   const filteredProperties = properties.filter(p => {
     const matchesSearch = 
@@ -100,6 +158,18 @@ export default function PropertiesPage() {
     vacant: properties.filter(p => p.status === "vacant").length,
     expiring: properties.filter(p => p.compliance_status === "expiring").length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="container mx-auto px-4 py-8 space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-32 bg-slate-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -240,7 +310,7 @@ export default function PropertiesPage() {
   );
 }
 
-function PropertyCard({ property }: { property: typeof mockProperties[0] }) {
+function PropertyCard({ property }: { property: Property }) {
   const statusConfig = {
     occupied: { label: "Occupied", color: "bg-green-100 text-green-700" },
     vacant: { label: "Vacant", color: "bg-orange-100 text-orange-700" },
@@ -252,8 +322,8 @@ function PropertyCard({ property }: { property: typeof mockProperties[0] }) {
     expired: { label: "Expired", color: "bg-red-100 text-red-700" },
   };
 
-  const status = statusConfig[property.status as keyof typeof statusConfig];
-  const compliance = complianceConfig[property.compliance_status as keyof typeof complianceConfig];
+  const status = statusConfig[property.status as keyof typeof statusConfig] || statusConfig.vacant;
+  const compliance = complianceConfig[property.compliance_status as keyof typeof complianceConfig] || complianceConfig.valid;
 
   return (
     <motion.div
@@ -265,22 +335,26 @@ function PropertyCard({ property }: { property: typeof mockProperties[0] }) {
       <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/70 dark:bg-slate-900/70 backdrop-blur overflow-hidden">
         <CardContent className="p-0">
           <div className="flex flex-col md:flex-row">
-            {/* Property Image */}
-            <div className="w-full md:w-48 h-32 md:h-auto bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
-              <Home className="w-12 h-12 text-slate-400" />
+            {/* Property Image / Placeholder */}
+            <div className="flex items-center justify-center p-4 md:p-6">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/40 flex items-center justify-center flex-shrink-0">
+                <Home className="w-8 h-8 md:w-10 md:h-10 text-blue-500 dark:text-blue-400" />
+              </div>
             </div>
 
             {/* Property Info */}
-            <div className="flex-1 p-4">
+            <div className="flex-1 p-4 pl-0">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-semibold text-lg text-slate-800 dark:text-white">
-                    {property.address_line_1}
-                    {property.address_line_2 && `, ${property.address_line_2}`}
-                  </h3>
-                  <p className="text-sm text-slate-500 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {property.city}, {property.postcode}
+                  <Link href={`/properties/${property.id}`}>
+                    <h3 className="font-semibold text-lg text-slate-800 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer">
+                      {property.address_line_1}
+                      {property.address_line_2 ? `, ${property.address_line_2}` : ""}, {property.city}, {property.postcode}
+                    </h3>
+                  </Link>
+                  <p className="text-sm text-slate-500 flex items-center gap-1 mt-0.5">
+                    <Building2 className="w-3 h-3" />
+                    {property.property_type ? property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1) : "Property"}
                   </p>
                 </div>
 

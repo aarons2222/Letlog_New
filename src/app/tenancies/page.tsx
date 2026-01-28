@@ -1,6 +1,14 @@
+/**
+ * #4 — Document access per role (TODO):
+ * When a document/file system is built, filter access as follows:
+ * - Tenant: can only see tenancy-related docs (agreement, inventory, notices addressed to them)
+ * - Landlord: sees everything for their property/tenancy
+ * - Contractor: should only see job-specific docs (scope, safety notes) after job award
+ * This page will need document listing filtered by the current user's role.
+ */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,60 +52,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { createClient } from "@/lib/supabase/client";
 
-// Mock data - would come from Supabase
-const mockTenancies = [
-  {
-    id: "1",
-    property: {
-      id: "p1",
-      address: "42 Oak Street, London, E1 4AB",
-      type: "flat",
-      bedrooms: 2,
-    },
-    tenants: [
-      { id: "t1", name: "Sarah Johnson", email: "sarah@example.com", isLead: true },
-      { id: "t2", name: "Mike Johnson", email: "mike@example.com", isLead: false },
-    ],
-    startDate: "2023-06-01",
-    endDate: "2024-05-31",
-    rentAmount: 1500,
-    status: "active",
-  },
-  {
-    id: "2",
-    property: {
-      id: "p2",
-      address: "15 Maple Avenue, Manchester, M1 2BB",
-      type: "house",
-      bedrooms: 3,
-    },
-    tenants: [
-      { id: "t3", name: "Emma Wilson", email: "emma@example.com", isLead: true },
-    ],
-    startDate: "2023-09-01",
-    endDate: "2024-08-31",
-    rentAmount: 1200,
-    status: "active",
-  },
-  {
-    id: "3",
-    property: {
-      id: "p3",
-      address: "8 Pine Road, Birmingham, B2 3CC",
-      type: "flat",
-      bedrooms: 1,
-    },
-    tenants: [
-      { id: "t4", name: "James Brown", email: "james@example.com", isLead: true },
-    ],
-    startDate: "2022-03-01",
-    endDate: "2023-02-28",
-    rentAmount: 850,
-    status: "ended",
-    endedAt: "2023-02-28",
-  },
-];
+interface TenancyTenant {
+  id: string;
+  name: string;
+  email: string;
+  isLead: boolean;
+}
+
+interface TenancyProperty {
+  id: string;
+  address: string;
+  type: string;
+  bedrooms: number;
+}
+
+interface Tenancy {
+  id: string;
+  property: TenancyProperty;
+  tenants: TenancyTenant[];
+  startDate: string;
+  endDate: string | null;
+  rentAmount: number;
+  status: string;
+  endedAt?: string;
+}
 
 const statusColors: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700",
@@ -107,13 +87,14 @@ const statusColors: Record<string, string> = {
 };
 
 export default function TenanciesPage() {
-  const [tenancies, setTenancies] = useState(mockTenancies);
+  const [tenancies, setTenancies] = useState<Tenancy[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(true);
   
   // End Tenancy Dialog
   const [endTenancyOpen, setEndTenancyOpen] = useState(false);
-  const [selectedTenancy, setSelectedTenancy] = useState<typeof mockTenancies[0] | null>(null);
+  const [selectedTenancy, setSelectedTenancy] = useState<Tenancy | null>(null);
   const [endReason, setEndReason] = useState("");
   const [endNotes, setEndNotes] = useState("");
   
@@ -121,6 +102,76 @@ export default function TenanciesPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
+
+  useEffect(() => {
+    async function fetchTenancies() {
+      const supabase = createClient();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch tenancies with property and tenant details
+        const { data, error } = await supabase
+          .from('tenancies')
+          .select(`
+            *,
+            properties!inner(id, address_line_1, address_line_2, city, postcode, property_type, bedrooms, landlord_id),
+            tenancy_tenants(id, is_lead_tenant, tenant_id, profiles:tenant_id(id, full_name, email))
+          `)
+          .eq('properties.landlord_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching tenancies:', error);
+          toast.error('Failed to load tenancies');
+          setIsLoading(false);
+          return;
+        }
+
+        const mapped: Tenancy[] = (data || []).map((t: any) => {
+          const prop = t.properties;
+          const address = [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+            .filter(Boolean)
+            .join(', ');
+
+          const tenants: TenancyTenant[] = (t.tenancy_tenants || []).map((tt: any) => ({
+            id: tt.profiles?.id || tt.tenant_id,
+            name: tt.profiles?.full_name || 'Unknown',
+            email: tt.profiles?.email || '',
+            isLead: tt.is_lead_tenant || false,
+          }));
+
+          return {
+            id: t.id,
+            property: {
+              id: prop.id,
+              address,
+              type: prop.property_type || 'house',
+              bedrooms: prop.bedrooms || 0,
+            },
+            tenants,
+            startDate: t.start_date,
+            endDate: t.end_date,
+            rentAmount: Number(t.rent_amount) || 0,
+            status: t.status,
+            endedAt: t.ended_at || undefined,
+          };
+        });
+
+        setTenancies(mapped);
+      } catch (err) {
+        console.error('Error:', err);
+        toast.error('Failed to load tenancies');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchTenancies();
+  }, []);
 
   const filteredTenancies = tenancies.filter((t) => {
     const matchesSearch = 
@@ -130,15 +181,25 @@ export default function TenanciesPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleEndTenancy = (tenancy: typeof mockTenancies[0]) => {
+  const handleEndTenancy = (tenancy: Tenancy) => {
     setSelectedTenancy(tenancy);
     setEndTenancyOpen(true);
   };
 
-  const confirmEndTenancy = () => {
+  const confirmEndTenancy = async () => {
     if (!selectedTenancy) return;
     
-    // Update tenancy status
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('tenancies')
+      .update({ status: 'ended', ended_at: new Date().toISOString(), end_reason: endReason })
+      .eq('id', selectedTenancy.id);
+
+    if (error) {
+      toast.error('Failed to end tenancy');
+      return;
+    }
+
     setTenancies(prev => prev.map(t => 
       t.id === selectedTenancy.id 
         ? { ...t, status: "ended", endedAt: new Date().toISOString() }
@@ -155,18 +216,34 @@ export default function TenanciesPage() {
     setEndNotes("");
   };
 
-  const handleInviteTenant = (tenancy: typeof mockTenancies[0]) => {
+  const handleInviteTenant = (tenancy: Tenancy) => {
     setSelectedTenancy(tenancy);
     setInviteOpen(true);
   };
 
-  const sendInvitation = () => {
-    if (!inviteEmail) {
+  const sendInvitation = async () => {
+    if (!inviteEmail || !selectedTenancy) {
       toast.error("Please enter an email address");
       return;
     }
     
-    // Would send invitation via Supabase
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('tenant_invitations')
+      .insert({
+        tenancy_id: selectedTenancy.id,
+        email: inviteEmail,
+        invited_by: user.id,
+      });
+
+    if (error) {
+      toast.error('Failed to send invitation');
+      return;
+    }
+    
     toast.success("Invitation sent", {
       description: `Invitation sent to ${inviteEmail}`,
     });
@@ -176,6 +253,18 @@ export default function TenanciesPage() {
     setInviteName("");
     setSelectedTenancy(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <div className="container mx-auto px-6 py-8 space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-40 bg-slate-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -237,7 +326,7 @@ export default function TenanciesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge className={statusColors[tenancy.status]}>
+                    <Badge className={statusColors[tenancy.status] || statusColors.draft}>
                       {tenancy.status.charAt(0).toUpperCase() + tenancy.status.slice(1)}
                     </Badge>
                     <DropdownMenu>
@@ -287,6 +376,9 @@ export default function TenanciesPage() {
                           )}
                         </div>
                       ))}
+                      {tenancy.tenants.length === 0 && (
+                        <div className="text-sm text-slate-400">No tenants assigned</div>
+                      )}
                     </div>
                   </div>
 
@@ -324,14 +416,14 @@ export default function TenanciesPage() {
                 </div>
 
                 {/* Review Window Notice for Ended Tenancies */}
-                {tenancy.status === "ended" && (
+                {tenancy.status === "ended" && tenancy.endedAt && (
                   <div className="mt-4 p-3 bg-amber-50 rounded-xl flex items-start gap-3">
                     <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div className="text-sm">
                       <span className="font-medium text-amber-800">Review window active</span>
                       <p className="text-amber-700 mt-0.5">
                         Former tenants can leave a review until{" "}
-                        {new Date(new Date(tenancy.endedAt!).getTime() + 60 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', {
+                        {new Date(new Date(tenancy.endedAt).getTime() + 60 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', {
                           day: 'numeric', month: 'short', year: 'numeric'
                         })}
                       </p>
@@ -448,7 +540,7 @@ export default function TenanciesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="inviteName">Tenant's Name</Label>
+                <Label htmlFor="inviteName">Tenant&apos;s Name</Label>
                 <Input
                   id="inviteName"
                   placeholder="John Smith"

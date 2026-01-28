@@ -1,6 +1,16 @@
+/**
+ * #7 — Quotes visibility rules:
+ * - Contractor view (this page): shows ONLY their own quotes (filtered by contractor_id)
+ * - Landlord view: sees all quotes on their tenders (handled in tenders/[id]/page.tsx)
+ * - Tenant: should NEVER see quotes (no nav link, and tenders/[id] hides quotes for tenants)
+ *
+ * #4 — Document access (TODO):
+ * When quote attachments (e.g. itemised breakdowns, certifications) are added,
+ * only the quote author and the tender's landlord should be able to view them.
+ */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,67 +20,36 @@ import {
   ArrowLeft, FileText, PoundSterling, Clock, CheckCircle, 
   XCircle, AlertCircle, MapPin, Calendar, ChevronRight, Briefcase
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
-// Mock quotes
-const mockQuotes = [
-  {
-    id: "1",
-    tender_id: "1",
-    tender_title: "Boiler repair - E119 error",
-    property_address: "42 Oak Lane, Flat 2, Lincoln",
-    amount: 175,
-    description: "I can diagnose and repair. E119 usually indicates pressure or pump issue. Parts extra if needed.",
-    status: "pending",
-    submitted_date: "2026-01-27",
-    landlord_name: "John Smith",
-    warranty_months: 3,
-  },
-  {
-    id: "2",
-    tender_id: "5",
-    tender_title: "Install new bathroom fan",
-    property_address: "10 Park Avenue, Lincoln",
-    amount: 95,
-    description: "Standard extractor fan installation. Including fan unit and labour.",
-    status: "accepted",
-    submitted_date: "2026-01-25",
-    landlord_name: "Mike Johnson",
-    warranty_months: 12,
-    accepted_date: "2026-01-26",
-  },
-  {
-    id: "3",
-    tender_id: "8",
-    tender_title: "Fix leaking radiator valve",
-    property_address: "5 Queen Street, Lincoln",
-    amount: 60,
-    description: "Replace radiator valve to stop leak.",
-    status: "rejected",
-    submitted_date: "2026-01-20",
-    landlord_name: "Emma Wilson",
-    warranty_months: 3,
-    rejection_reason: "Went with a lower quote",
-  },
-  {
-    id: "4",
-    tender_id: "12",
-    tender_title: "Annual gas safety check",
-    property_address: "22 Church Lane, Lincoln",
-    amount: 65,
-    description: "Full gas safety inspection and certificate.",
-    status: "completed",
-    submitted_date: "2026-01-15",
-    landlord_name: "Sarah Brown",
-    warranty_months: 0,
-    completed_date: "2026-01-18",
-    paid: true,
-    review_rating: 5,
-    review_text: "Excellent service, very professional!",
-  },
-];
+interface QuoteItem {
+  id: string;
+  tender_id: string;
+  tender_title: string;
+  property_address: string;
+  amount: number;
+  description: string;
+  status: string;
+  submitted_date: string;
+  landlord_name: string;
+  warranty_months: number;
+  accepted_date?: string;
+  rejection_reason?: string;
+  completed_date?: string;
+  paid?: boolean;
+  review_rating?: number;
+  review_text?: string;
+}
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType; description: string }> = {
   pending: { 
+    label: "Pending", 
+    color: "bg-amber-100 text-amber-700", 
+    icon: Clock,
+    description: "Awaiting landlord response"
+  },
+  submitted: { 
     label: "Pending", 
     color: "bg-amber-100 text-amber-700", 
     icon: Clock,
@@ -87,6 +66,12 @@ const statusConfig = {
     color: "bg-slate-100 text-slate-600", 
     icon: XCircle,
     description: "Another quote was chosen"
+  },
+  withdrawn: { 
+    label: "Withdrawn", 
+    color: "bg-slate-100 text-slate-500", 
+    icon: XCircle,
+    description: "Quote withdrawn"
   },
   completed: { 
     label: "Completed", 
@@ -109,9 +94,79 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+// Map DB status to UI status
+function mapQuoteStatus(dbStatus: string): string {
+  if (dbStatus === 'submitted') return 'pending';
+  return dbStatus;
+}
+
 export default function QuotesPage() {
-  const [quotes, setQuotes] = useState(mockQuotes);
+  const [quotes, setQuotes] = useState<QuoteItem[]>([]);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchQuotes() {
+      const supabase = createClient();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('quotes')
+          .select(`
+            *,
+            tenders(
+              id, title, landlord_id,
+              properties(address_line_1, address_line_2, city, postcode),
+              profiles:landlord_id(full_name)
+            )
+          `)
+          .eq('contractor_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching quotes:', error);
+          toast.error('Failed to load quotes');
+          setIsLoading(false);
+          return;
+        }
+
+        const mapped: QuoteItem[] = (data || []).map((q: any) => {
+          const tender = q.tenders;
+          const prop = tender?.properties;
+          const address = prop
+            ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode].filter(Boolean).join(', ')
+            : 'Unknown';
+
+          return {
+            id: q.id,
+            tender_id: q.tender_id,
+            tender_title: tender?.title || 'Job',
+            property_address: address,
+            amount: Number(q.amount) || 0,
+            description: q.message || q.breakdown || '',
+            status: mapQuoteStatus(q.status),
+            submitted_date: q.created_at ? new Date(q.created_at).toISOString().split('T')[0] : '',
+            landlord_name: tender?.profiles?.full_name || 'Landlord',
+            warranty_months: 0,
+          };
+        });
+
+        setQuotes(mapped);
+      } catch (err) {
+        console.error('Error:', err);
+        toast.error('Failed to load quotes');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchQuotes();
+  }, []);
 
   const filteredQuotes = filterStatus 
     ? quotes.filter(q => q.status === filterStatus)
@@ -130,9 +185,17 @@ export default function QuotesPage() {
     .filter(q => q.status === "completed" && q.paid)
     .reduce((sum, q) => sum + q.amount, 0);
 
-  const pendingPayments = quotes
-    .filter(q => q.status === "completed" && !q.paid)
-    .reduce((sum, q) => sum + q.amount, 0);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="container mx-auto px-4 py-8 space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-32 bg-slate-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -257,9 +320,9 @@ export default function QuotesPage() {
   );
 }
 
-function QuoteCard({ quote }: { quote: typeof mockQuotes[0] }) {
-  const status = statusConfig[quote.status as keyof typeof statusConfig];
-  const StatusIcon = status?.icon || AlertCircle;
+function QuoteCard({ quote }: { quote: QuoteItem }) {
+  const status = statusConfig[quote.status] || statusConfig.pending;
+  const StatusIcon = status.icon;
 
   return (
     <motion.div
@@ -271,8 +334,8 @@ function QuoteCard({ quote }: { quote: typeof mockQuotes[0] }) {
         <CardContent className="p-5">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             {/* Status Icon */}
-            <div className={`w-12 h-12 rounded-xl ${status?.color.replace("text-", "bg-").split(" ")[0]} flex items-center justify-center flex-shrink-0`}>
-              <StatusIcon className={`w-6 h-6 ${status?.color.split(" ")[1]}`} />
+            <div className={`w-12 h-12 rounded-xl ${status.color.replace("text-", "bg-").split(" ")[0]} flex items-center justify-center flex-shrink-0`}>
+              <StatusIcon className={`w-6 h-6 ${status.color.split(" ")[1]}`} />
             </div>
 
             {/* Content */}
@@ -289,12 +352,12 @@ function QuoteCard({ quote }: { quote: typeof mockQuotes[0] }) {
                 </div>
                 <div className="text-right">
                   <p className="text-xl font-bold text-green-600">£{quote.amount}</p>
-                  <Badge className={status?.color}>{status?.label}</Badge>
+                  <Badge className={status.color}>{status.label}</Badge>
                 </div>
               </div>
 
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 line-clamp-2">
-                "{quote.description}"
+                &quot;{quote.description}&quot;
               </p>
 
               <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
@@ -328,12 +391,12 @@ function QuoteCard({ quote }: { quote: typeof mockQuotes[0] }) {
               {quote.status === "completed" && quote.review_text && (
                 <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <div className="flex items-center gap-1 mb-1">
-                    {[...Array(quote.review_rating)].map((_, i) => (
+                    {[...Array(quote.review_rating || 0)].map((_, i) => (
                       <span key={i} className="text-amber-500">★</span>
                     ))}
                   </div>
                   <p className="text-sm text-blue-700 dark:text-blue-400">
-                    "{quote.review_text}"
+                    &quot;{quote.review_text}&quot;
                   </p>
                 </div>
               )}

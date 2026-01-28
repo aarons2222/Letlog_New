@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import {
   useDraggable,
 } from "@dnd-kit/core";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 
 // Types for calendar events
 type EventType = "tenancy_start" | "tenancy_end" | "compliance" | "rent_due" | "maintenance";
@@ -35,17 +36,7 @@ interface CalendarEvent {
   urgent?: boolean;
 }
 
-// Mock events - will be replaced with real Supabase data
-const initialEvents: CalendarEvent[] = [
-  { id: "1", date: new Date(2026, 0, 15), title: "Gas Safety Certificate expires", type: "compliance", property: "15 High St", urgent: true },
-  { id: "2", date: new Date(2026, 0, 28), title: "Rent due", type: "rent_due", property: "42 Oak Lane" },
-  { id: "3", date: new Date(2026, 1, 1), title: "Tenancy starts", type: "tenancy_start", property: "8 Mill Road" },
-  { id: "4", date: new Date(2026, 1, 14), title: "EICR due", type: "compliance", property: "42 Oak Lane" },
-  { id: "5", date: new Date(2026, 1, 28), title: "Rent due", type: "rent_due", property: "42 Oak Lane" },
-  { id: "6", date: new Date(2026, 2, 15), title: "Boiler service scheduled", type: "maintenance", property: "15 High St" },
-  { id: "7", date: new Date(2026, 4, 31), title: "Tenancy ends", type: "tenancy_end", property: "42 Oak Lane" },
-  { id: "8", date: new Date(2026, 5, 1), title: "Tenancy renewal", type: "tenancy_start", property: "42 Oak Lane" },
-];
+// Events will be fetched from Supabase (tenancies, compliance_records, issues)
 
 const eventConfig: Record<EventType, { color: string; bgColor: string; icon: React.ElementType; dotColor: string }> = {
   tenancy_start: { color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30", icon: Key, dotColor: "bg-green-500" },
@@ -190,10 +181,120 @@ function DroppableDay({
 }
 
 export default function CalendarPage() {
-  const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCalendarEvents() {
+      const supabase = createClient();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        const calendarEvents: CalendarEvent[] = [];
+
+        // Fetch tenancies for start/end dates
+        const { data: tenancies } = await supabase
+          .from('tenancies')
+          .select(`
+            id, start_date, end_date, status,
+            properties!inner(address_line_1, city, landlord_id)
+          `)
+          .eq('properties.landlord_id', user.id);
+
+        if (tenancies) {
+          tenancies.forEach((t: any) => {
+            const address = [t.properties?.address_line_1, t.properties?.city].filter(Boolean).join(', ');
+            if (t.start_date) {
+              calendarEvents.push({
+                id: `tenancy-start-${t.id}`,
+                date: new Date(t.start_date),
+                title: 'Tenancy starts',
+                type: 'tenancy_start',
+                property: address,
+              });
+            }
+            if (t.end_date) {
+              calendarEvents.push({
+                id: `tenancy-end-${t.id}`,
+                date: new Date(t.end_date),
+                title: 'Tenancy ends',
+                type: 'tenancy_end',
+                property: address,
+              });
+            }
+          });
+        }
+
+        // Fetch compliance records for expiry dates
+        const { data: compliance } = await supabase
+          .from('compliance_records')
+          .select(`
+            id, expiry_date, compliance_type, type,
+            properties!inner(address_line_1, city, landlord_id)
+          `)
+          .eq('properties.landlord_id', user.id);
+
+        if (compliance) {
+          const now = new Date();
+          const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+          compliance.forEach((c: any) => {
+            if (c.expiry_date) {
+              const expiryDate = new Date(c.expiry_date);
+              const address = [c.properties?.address_line_1, c.properties?.city].filter(Boolean).join(', ');
+              const typeName = c.compliance_type || c.type || 'Certificate';
+              calendarEvents.push({
+                id: `compliance-${c.id}`,
+                date: expiryDate,
+                title: `${typeName} expires`,
+                type: 'compliance',
+                property: address,
+                urgent: expiryDate <= thirtyDaysFromNow,
+              });
+            }
+          });
+        }
+
+        // Fetch open issues as maintenance events
+        const { data: issues } = await supabase
+          .from('issues')
+          .select(`
+            id, title, created_at,
+            properties!inner(address_line_1, city, landlord_id)
+          `)
+          .eq('properties.landlord_id', user.id)
+          .in('status', ['open', 'in_progress', 'reported', 'acknowledged']);
+
+        if (issues) {
+          issues.forEach((issue: any) => {
+            const address = [issue.properties?.address_line_1, issue.properties?.city].filter(Boolean).join(', ');
+            calendarEvents.push({
+              id: `issue-${issue.id}`,
+              date: new Date(issue.created_at),
+              title: issue.title || 'Maintenance issue',
+              type: 'maintenance',
+              property: address,
+            });
+          });
+        }
+
+        setEvents(calendarEvents);
+      } catch (err) {
+        console.error('Error fetching calendar events:', err);
+        toast.error('Failed to load calendar events');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchCalendarEvents();
+  }, []);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -314,6 +415,17 @@ export default function CalendarPage() {
       })
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="container mx-auto px-4 py-8 space-y-4">
+          <div className="h-12 w-48 bg-slate-100 rounded-lg animate-pulse" />
+          <div className="h-96 bg-slate-100 rounded-2xl animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">

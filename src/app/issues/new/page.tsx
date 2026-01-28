@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,8 @@ import {
   AlertTriangle, Droplets, Zap, Wind, Home,
   Wrench, Image as ImageIcon, Send
 } from "lucide-react";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 
 const categories = [
   { id: "plumbing", label: "Plumbing", icon: Droplets, description: "Leaks, drains, toilets, boilers" },
@@ -44,6 +47,7 @@ const itemVariants: Variants = {
 };
 
 export default function NewIssuePage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     category: "",
@@ -80,10 +84,33 @@ export default function NewIssuePage() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setIsSuccess(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You must be logged in");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { error } = await supabase.from("issues").insert({
+        reported_by: user.id,
+        category: formData.category,
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        status: "reported",
+      });
+
+      if (error) throw error;
+
+      setIsSubmitting(false);
+      setIsSuccess(true);
+    } catch (error: any) {
+      console.error("Submit issue error:", error);
+      toast.error(error.message || "Failed to submit issue");
+      setIsSubmitting(false);
+    }
   };
 
   const canProceed = () => {

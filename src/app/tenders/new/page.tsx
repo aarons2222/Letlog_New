@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ import {
   Droplets, Zap, Wind, Home, Wrench, AlertTriangle,
   Send, PoundSterling, Calendar, MapPin, Building2
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 const tradeCategories = [
   { id: "plumbing", label: "Plumbing", icon: Droplets, description: "Leaks, drains, toilets, pipes" },
@@ -36,12 +38,10 @@ const urgencyLevels = [
   { id: "high", label: "Urgent", description: "Within 48 hours", color: "border-red-300 bg-red-50" },
 ];
 
-// Mock properties - would come from Supabase
-const mockProperties = [
-  { id: "1", address: "42 Oak Lane, Flat 2, Lincoln LN1 3BT" },
-  { id: "2", address: "15 High Street, Lincoln LN2 1HN" },
-  { id: "3", address: "8 Mill Road, Lincoln LN3 4JP" },
-];
+interface PropertyOption {
+  id: string;
+  address: string;
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -58,6 +58,7 @@ const itemVariants = {
 
 export default function NewTenderPage() {
   const [step, setStep] = useState(1);
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [formData, setFormData] = useState({
     property_id: "",
     trade: "",
@@ -71,6 +72,39 @@ export default function NewTenderPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  useEffect(() => {
+    async function fetchProperties() {
+      const supabase = createClient();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('properties')
+          .select('id, address_line_1, address_line_2, city, postcode')
+          .eq('landlord_id', user.id)
+          .eq('is_active', true);
+
+        if (error) {
+          console.error('Error fetching properties:', error);
+          toast.error('Failed to load properties');
+          return;
+        }
+
+        const mapped: PropertyOption[] = (data || []).map((p: any) => ({
+          id: p.id,
+          address: [p.address_line_1, p.address_line_2, p.city, p.postcode].filter(Boolean).join(', '),
+        }));
+
+        setProperties(mapped);
+      } catch (err) {
+        console.error('Error:', err);
+      }
+    }
+
+    fetchProperties();
+  }, []);
 
   const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -97,9 +131,40 @@ export default function NewTenderPage() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Please log in');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Get the selected property's postcode
+    const selectedProp = properties.find(p => p.id === formData.property_id);
+    const postcode = selectedProp?.address.split(', ').pop() || '';
+
+    const { error } = await supabase
+      .from('tenders')
+      .insert({
+        property_id: formData.property_id,
+        landlord_id: user.id,
+        title: formData.title,
+        description: formData.description,
+        trade_category: formData.trade,
+        budget_min: Number(formData.budget_min) || 0,
+        budget_max: Number(formData.budget_max) || 0,
+        deadline: formData.deadline || null,
+        postcode,
+      });
+
     setIsSubmitting(false);
+
+    if (error) {
+      console.error('Error creating tender:', error);
+      toast.error('Failed to post job');
+      return;
+    }
+
     setIsSuccess(true);
   };
 
@@ -110,7 +175,7 @@ export default function NewTenderPage() {
     return true;
   };
 
-  const selectedProperty = mockProperties.find(p => p.id === formData.property_id);
+  const selectedProperty = properties.find(p => p.id === formData.property_id);
   const selectedTrade = tradeCategories.find(t => t.id === formData.trade);
 
   if (isSuccess) {
@@ -209,7 +274,7 @@ export default function NewTenderPage() {
                 <div>
                   <Label className="text-base font-medium mb-3 block">Which property?</Label>
                   <div className="space-y-3">
-                    {mockProperties.map((property) => (
+                    {properties.map((property) => (
                       <motion.button
                         key={property.id}
                         onClick={() => setFormData(prev => ({ ...prev, property_id: property.id }))}

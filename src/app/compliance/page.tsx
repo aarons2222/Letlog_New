@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ import {
   Clock, Upload, FileText, Home, Calendar, Filter, Plus,
   Flame, Zap, Bug, FileCheck
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 // Compliance types with UK requirements
 const complianceTypes = {
@@ -59,69 +61,18 @@ const complianceTypes = {
   },
 };
 
-// Mock data
-const mockCompliance = [
-  {
-    id: "1",
-    property_id: "1",
-    property_address: "42 Oak Lane, Flat 2",
-    compliance_type: "gas_safety",
-    issue_date: "2025-08-15",
-    expiry_date: "2026-08-14",
-    status: "valid",
-    certificate_number: "GS-2025-12345",
-    inspector_name: "British Gas",
-    document_url: null,
-  },
-  {
-    id: "2",
-    property_id: "1",
-    property_address: "42 Oak Lane, Flat 2",
-    compliance_type: "eicr",
-    issue_date: "2024-03-01",
-    expiry_date: "2029-02-28",
-    status: "valid",
-    certificate_number: "EICR-2024-67890",
-    inspector_name: "Sparks Electrical",
-    document_url: null,
-  },
-  {
-    id: "3",
-    property_id: "2",
-    property_address: "15 High Street",
-    compliance_type: "gas_safety",
-    issue_date: "2025-01-10",
-    expiry_date: "2026-01-09",
-    status: "expiring_soon",
-    certificate_number: "GS-2025-54321",
-    inspector_name: "Local Gas Services",
-    document_url: null,
-  },
-  {
-    id: "4",
-    property_id: "2",
-    property_address: "15 High Street",
-    compliance_type: "epc",
-    issue_date: "2020-06-15",
-    expiry_date: "2030-06-14",
-    status: "valid",
-    certificate_number: "EPC-0012-3456-7890",
-    inspector_name: "Energy Assessors Ltd",
-    document_url: null,
-  },
-  {
-    id: "5",
-    property_id: "3",
-    property_address: "8 Mill Road",
-    compliance_type: "eicr",
-    issue_date: "2021-11-20",
-    expiry_date: "2026-11-19",
-    status: "valid",
-    certificate_number: "EICR-2021-11111",
-    inspector_name: "Safe Electrics",
-    document_url: null,
-  },
-];
+interface ComplianceRecord {
+  id: string;
+  property_id: string;
+  property_address: string;
+  compliance_type: string;
+  issue_date: string;
+  expiry_date: string;
+  status: string;
+  certificate_number: string;
+  inspector_name: string;
+  document_url: string | null;
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -137,10 +88,80 @@ const itemVariants = {
 };
 
 export default function CompliancePage() {
-  const [records, setRecords] = useState(mockCompliance);
+  const [records, setRecords] = useState<ComplianceRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCompliance() {
+      const supabase = createClient();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('compliance_records')
+          .select(`
+            *,
+            properties!inner(address_line_1, address_line_2, city, postcode, landlord_id)
+          `)
+          .eq('properties.landlord_id', user.id);
+
+        if (error) {
+          console.error('Error fetching compliance records:', error);
+          toast.error('Failed to load compliance records');
+          setIsLoading(false);
+          return;
+        }
+
+        const now = new Date();
+        const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        const mapped: ComplianceRecord[] = (data || []).map((r: any) => {
+          const prop = r.properties;
+          const address = [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+            .filter(Boolean)
+            .join(', ');
+
+          // Compute status from expiry date
+          let status = 'valid';
+          const expiry = new Date(r.expiry_date);
+          if (expiry < now) {
+            status = 'expired';
+          } else if (expiry <= thirtyDaysFromNow) {
+            status = 'expiring_soon';
+          }
+
+          return {
+            id: r.id,
+            property_id: r.property_id,
+            property_address: address,
+            compliance_type: r.compliance_type || r.type || 'gas_safety',
+            issue_date: r.issue_date || r.created_at?.split('T')[0] || '',
+            expiry_date: r.expiry_date,
+            status,
+            certificate_number: r.certificate_number || '',
+            inspector_name: r.inspector_name || '',
+            document_url: r.document_url || null,
+          };
+        });
+
+        setRecords(mapped);
+      } catch (err) {
+        console.error('Error:', err);
+        toast.error('Failed to load compliance records');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchCompliance();
+  }, []);
 
   const filteredRecords = records.filter(r => {
     const matchesSearch = 
@@ -165,6 +186,18 @@ export default function CompliancePage() {
   const expiringSoon = filteredRecords.filter(r => r.status === "expiring_soon");
   const expired = filteredRecords.filter(r => r.status === "expired");
   const valid = filteredRecords.filter(r => r.status === "valid");
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="container mx-auto px-4 py-8 space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-32 bg-slate-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -381,7 +414,7 @@ export default function CompliancePage() {
   );
 }
 
-function ComplianceCard({ record }: { record: typeof mockCompliance[0] }) {
+function ComplianceCard({ record }: { record: ComplianceRecord }) {
   const typeInfo = complianceTypes[record.compliance_type as keyof typeof complianceTypes];
   const Icon = typeInfo?.icon || FileText;
 

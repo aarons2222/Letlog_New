@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { 
-  ArrowLeft, Home, Upload, X, Save, MapPin, Bed, Bath, 
-  Building2, PoundSterling
+import { useRouter, useParams } from "next/navigation";
+import {
+  ArrowLeft, Home, Save, MapPin, Bed, Bath, Building2
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -28,16 +27,18 @@ const propertyTypes = [
   { value: "flat", label: "Flat/Apartment" },
   { value: "bungalow", label: "Bungalow" },
   { value: "studio", label: "Studio" },
-  { value: "room", label: "Room/HMO" },
+  { value: "hmo", label: "HMO" },
   { value: "commercial", label: "Commercial" },
-  { value: "other", label: "Other" },
 ];
 
-export default function NewPropertyPage() {
+export default function EditPropertyPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
-  
+  const params = useParams();
+  const id = params.id as string;
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
   const [formData, setFormData] = useState({
     address_line_1: "",
     address_line_2: "",
@@ -48,87 +49,116 @@ export default function NewPropertyPage() {
     bedrooms: "",
     bathrooms: "",
     description: "",
-    rent_amount: "",
-    epc_rating: "",
   });
 
+  useEffect(() => {
+    async function fetchProperty() {
+      const supabase = createClient();
+      try {
+        const { data, error } = await supabase
+          .from("properties")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (error) throw error;
+
+        setFormData({
+          address_line_1: data.address_line_1 || "",
+          address_line_2: data.address_line_2 || "",
+          city: data.city || "",
+          county: data.county || "",
+          postcode: data.postcode || "",
+          property_type: data.property_type || "",
+          bedrooms: data.bedrooms?.toString() || "",
+          bathrooms: data.bathrooms?.toString() || "",
+          description: data.description || "",
+        });
+      } catch (err: any) {
+        console.error("Error fetching property:", err);
+        toast.error("Failed to load property");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (id) fetchProperty();
+  }, [id]);
+
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    // In production, upload to Supabase Storage
-    // For now, create local preview URLs
-    const newImages = Array.from(files).map(file => URL.createObjectURL(file));
-    setImages(prev => [...prev, ...newImages].slice(0, 6)); // Max 6 images
-  };
-
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSaving(true);
 
     try {
-      // Validate required fields
       if (!formData.address_line_1 || !formData.city || !formData.postcode || !formData.property_type) {
         toast.error("Please fill in all required fields");
-        setIsLoading(false);
+        setIsSaving(false);
         return;
       }
 
-      const response = await fetch('/api/properties', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const supabase = createClient();
+
+      const { error } = await supabase
+        .from("properties")
+        .update({
           address_line_1: formData.address_line_1,
-          address_line_2: formData.address_line_2,
+          address_line_2: formData.address_line_2 || null,
           city: formData.city,
-          county: formData.county,
+          county: formData.county || null,
           postcode: formData.postcode,
           property_type: formData.property_type,
-          bedrooms: formData.bedrooms,
-          bathrooms: formData.bathrooms,
-          description: formData.description,
-        }),
-      });
+          bedrooms: parseInt(formData.bedrooms) || 1,
+          bathrooms: parseInt(formData.bathrooms) || 1,
+          description: formData.description || null,
+        })
+        .eq("id", id);
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to add property');
+      if (error) throw error;
 
-      toast.success("Property added successfully!");
-      router.push("/properties");
+      toast.success("Property updated successfully!");
+      router.push(`/properties/${id}`);
     } catch (error: any) {
-      toast.error(error.message || "Failed to add property");
+      toast.error(error.message || "Failed to update property");
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
+          <div className="h-10 w-48 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />
+          <div className="h-64 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+          <div className="h-64 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50"
       >
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Link href="/properties">
+            <Link href={`/properties/${id}`}>
               <Button variant="ghost" size="sm" className="gap-2">
                 <ArrowLeft className="w-4 h-4" />
-                Properties
+                Back
               </Button>
             </Link>
             <div className="flex items-center gap-2">
               <Home className="w-6 h-6 text-blue-500" />
-              <h1 className="text-xl font-bold text-slate-800 dark:text-white">Add Property</h1>
+              <h1 className="text-xl font-bold text-slate-800 dark:text-white">Edit Property</h1>
             </div>
           </div>
         </div>
@@ -137,10 +167,7 @@ export default function NewPropertyPage() {
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Address Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -210,11 +237,7 @@ export default function NewPropertyPage() {
           </motion.div>
 
           {/* Property Details */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -235,7 +258,7 @@ export default function NewPropertyPage() {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {propertyTypes.map(type => (
+                      {propertyTypes.map((type) => (
                         <SelectItem key={type.value} value={type.value}>
                           {type.label}
                         </SelectItem>
@@ -277,40 +300,6 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="rent_amount">Monthly Rent (£)</Label>
-                    <div className="relative">
-                      <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="rent_amount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="850"
-                        value={formData.rent_amount}
-                        onChange={(e) => handleChange("rent_amount", e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="epc_rating">EPC Rating</Label>
-                    <Select value={formData.epc_rating} onValueChange={(v) => handleChange("epc_rating", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["A", "B", "C", "D", "E", "F", "G"].map(rating => (
-                          <SelectItem key={rating} value={rating}>
-                            {rating}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea
@@ -325,76 +314,20 @@ export default function NewPropertyPage() {
             </Card>
           </motion.div>
 
-          {/* Photos */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                    <Upload className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <CardTitle>Photos</CardTitle>
-                    <CardDescription>Upload up to 6 photos</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4">
-                  {images.map((image, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
-                    >
-                      <img src={image} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </motion.div>
-                  ))}
-                  
-                  {images.length < 6 && (
-                    <label className="aspect-video rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors">
-                      <Upload className="w-8 h-8 text-slate-400 mb-2" />
-                      <span className="text-sm text-slate-500">Add photo</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
           {/* Submit */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.2 }}
             className="flex gap-4"
           >
-            <Link href="/properties" className="flex-1">
+            <Link href={`/properties/${id}`} className="flex-1">
               <Button variant="outline" className="w-full">
                 Cancel
               </Button>
             </Link>
-            <Button type="submit" className="flex-1 gap-2" disabled={isLoading}>
-              {isLoading ? (
+            <Button type="submit" className="flex-1 gap-2" disabled={isSaving}>
+              {isSaving ? (
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -403,7 +336,7 @@ export default function NewPropertyPage() {
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Add Property
+                  Save Changes
                 </>
               )}
             </Button>

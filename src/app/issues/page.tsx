@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,8 @@ import {
   ChevronRight, Filter, Search, Home, ArrowLeft
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -45,46 +47,6 @@ interface Issue {
   photos: number;
 }
 
-// Mock data
-const mockIssues: Issue[] = [
-  {
-    id: "1",
-    title: "Boiler not heating water",
-    description: "Hot water stopped working yesterday evening. Tried resetting but no luck.",
-    property: "42 Oak Lane, Flat 2",
-    status: "in_progress",
-    priority: "high",
-    createdAt: "2026-01-25",
-    updatedAt: "2026-01-27",
-    category: "Plumbing",
-    photos: 2,
-  },
-  {
-    id: "2", 
-    title: "Broken window latch",
-    description: "Bedroom window won't close properly, latch mechanism is broken.",
-    property: "42 Oak Lane, Flat 2",
-    status: "open",
-    priority: "medium",
-    createdAt: "2026-01-26",
-    updatedAt: "2026-01-26",
-    category: "Windows & Doors",
-    photos: 1,
-  },
-  {
-    id: "3",
-    title: "Damp patch on ceiling",
-    description: "Small damp patch appeared in bathroom ceiling after heavy rain.",
-    property: "15 High Street",
-    status: "resolved",
-    priority: "medium",
-    createdAt: "2026-01-20",
-    updatedAt: "2026-01-24",
-    category: "Damp & Mould",
-    photos: 3,
-  },
-];
-
 const statusConfig = {
   open: { label: "Open", color: "bg-orange-100 text-orange-700 border-orange-200", icon: AlertCircle },
   in_progress: { label: "In Progress", color: "bg-blue-100 text-blue-700 border-blue-200", icon: Clock },
@@ -98,11 +60,86 @@ const priorityConfig = {
   urgent: { label: "Urgent", color: "bg-red-100 text-red-700" },
 };
 
+// Map DB status to UI status
+function mapIssueStatus(dbStatus: string): IssueStatus {
+  switch (dbStatus) {
+    case 'reported':
+    case 'acknowledged':
+      return 'open';
+    case 'in_progress':
+      return 'in_progress';
+    case 'resolved':
+    case 'closed':
+      return 'resolved';
+    default:
+      return 'open';
+  }
+}
+
 export default function IssuesPage() {
+  const [issues, setIssues] = useState<Issue[]>([]);
   const [filter, setFilter] = useState<IssueStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredIssues = mockIssues.filter(issue => {
+  useEffect(() => {
+    async function fetchIssues() {
+      const supabase = createClient();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('issues')
+          .select(`
+            *,
+            properties(address_line_1, address_line_2, city, postcode)
+          `)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching issues:', error);
+          toast.error('Failed to load issues');
+          setIsLoading(false);
+          return;
+        }
+
+        const mapped: Issue[] = (data || []).map((issue: any) => {
+          const prop = issue.properties;
+          const address = prop
+            ? [prop.address_line_1, prop.address_line_2].filter(Boolean).join(', ')
+            : 'Unknown property';
+
+          return {
+            id: issue.id,
+            title: issue.title,
+            description: issue.description || '',
+            property: address,
+            status: mapIssueStatus(issue.status),
+            priority: issue.priority || 'medium',
+            createdAt: issue.created_at,
+            updatedAt: issue.updated_at,
+            category: issue.location_in_property || 'General',
+            photos: issue.photos?.length || 0,
+          };
+        });
+
+        setIssues(mapped);
+      } catch (err) {
+        console.error('Error:', err);
+        toast.error('Failed to load issues');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchIssues();
+  }, []);
+
+  const filteredIssues = issues.filter(issue => {
     const matchesFilter = filter === "all" || issue.status === filter;
     const matchesSearch = issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          issue.property.toLowerCase().includes(searchQuery.toLowerCase());
@@ -110,11 +147,23 @@ export default function IssuesPage() {
   });
 
   const stats = {
-    total: mockIssues.length,
-    open: mockIssues.filter(i => i.status === "open").length,
-    inProgress: mockIssues.filter(i => i.status === "in_progress").length,
-    resolved: mockIssues.filter(i => i.status === "resolved").length,
+    total: issues.length,
+    open: issues.filter(i => i.status === "open").length,
+    inProgress: issues.filter(i => i.status === "in_progress").length,
+    resolved: issues.filter(i => i.status === "resolved").length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="container mx-auto px-4 py-8 space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-24 bg-slate-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">

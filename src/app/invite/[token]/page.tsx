@@ -10,22 +10,22 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Home, CheckCircle2, AlertCircle, ArrowRight, Key, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
-// Mock invitation data - would come from Supabase
-const mockInvitation = {
-  id: "inv1",
-  tenancyId: "t1",
-  email: "newtenant@example.com",
-  invitedBy: "John Smith",
-  landlordCompany: "Property Management Ltd",
+interface Invitation {
+  id: string;
+  tenancyId: string;
+  email: string;
+  invitedBy: string;
+  landlordCompany: string;
   property: {
-    address: "42 Oak Street, London, E1 4AB",
-    type: "flat",
-    bedrooms: 2,
-  },
-  status: "pending",
-  expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-};
+    address: string;
+    type: string;
+    bedrooms: number;
+  };
+  status: string;
+  expiresAt: string;
+}
 
 export default function InvitePage() {
   const params = useParams();
@@ -33,7 +33,7 @@ export default function InvitePage() {
   const token = params.token as string;
   
   const [loading, setLoading] = useState(true);
-  const [invitation, setInvitation] = useState<typeof mockInvitation | null>(null);
+  const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   const [fullName, setFullName] = useState("");
@@ -42,23 +42,75 @@ export default function InvitePage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    // Simulate fetching invitation
     const fetchInvitation = async () => {
       setLoading(true);
-      
-      // In reality, fetch from Supabase
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Check if token is valid
-      if (token === "invalid" || token === "expired") {
-        setError(token === "expired" ? "This invitation has expired." : "Invalid invitation link.");
-        setInvitation(null);
-      } else {
-        setInvitation(mockInvitation);
+      const supabase = createClient();
+
+      try {
+        // Fetch invitation by token with tenancy and property details
+        const { data, error: fetchError } = await supabase
+          .from('tenant_invitations')
+          .select(`
+            *,
+            tenancies(
+              id,
+              properties(address_line_1, address_line_2, city, postcode, property_type, bedrooms)
+            ),
+            profiles:invited_by(full_name)
+          `)
+          .eq('token', token)
+          .single();
+
+        if (fetchError || !data) {
+          setError("Invalid invitation link.");
+          setInvitation(null);
+          setLoading(false);
+          return;
+        }
+
+        // Check if invitation has expired
+        if (data.expires_at && new Date(data.expires_at) < new Date()) {
+          setError("This invitation has expired.");
+          setInvitation(null);
+          setLoading(false);
+          return;
+        }
+
+        // Check if already accepted
+        if (data.status === 'accepted') {
+          setError("This invitation has already been accepted.");
+          setInvitation(null);
+          setLoading(false);
+          return;
+        }
+
+        const prop = data.tenancies?.properties;
+        const address = prop
+          ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode].filter(Boolean).join(', ')
+          : 'Property';
+
+        setInvitation({
+          id: data.id,
+          tenancyId: data.tenancy_id,
+          email: data.email,
+          invitedBy: data.profiles?.full_name || 'Your landlord',
+          landlordCompany: 'Property Management',
+          property: {
+            address,
+            type: prop?.property_type || 'flat',
+            bedrooms: prop?.bedrooms || 0,
+          },
+          status: data.status,
+          expiresAt: data.expires_at || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        });
         setError(null);
+      } catch (err) {
+        console.error('Error fetching invitation:', err);
+        setError("Failed to load invitation.");
+        setInvitation(null);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
     
     fetchInvitation();
@@ -83,18 +135,58 @@ export default function InvitePage() {
     }
     
     setSubmitting(true);
-    
-    // Simulate account creation
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast.success("Account created!", {
-      description: "Welcome to LetLog. Redirecting to your dashboard...",
-    });
-    
-    // Redirect to dashboard
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 1500);
+    const supabase = createClient();
+
+    try {
+      // Create account via Supabase Auth
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: invitation?.email || '',
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            role: 'tenant',
+          },
+        },
+      });
+
+      if (signUpError) {
+        toast.error(signUpError.message || "Failed to create account");
+        setSubmitting(false);
+        return;
+      }
+
+      // Mark invitation as accepted
+      if (invitation) {
+        await supabase
+          .from('tenant_invitations')
+          .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+          .eq('id', invitation.id);
+
+        // Add tenant to tenancy if we have a user ID
+        if (authData.user) {
+          await supabase
+            .from('tenancy_tenants')
+            .insert({
+              tenancy_id: invitation.tenancyId,
+              tenant_id: authData.user.id,
+              is_lead_tenant: false,
+            });
+        }
+      }
+
+      toast.success("Account created!", {
+        description: "Welcome to LetLog. Redirecting to your dashboard...",
+      });
+      
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 1500);
+    } catch (err) {
+      console.error('Error creating account:', err);
+      toast.error("Failed to create account");
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
