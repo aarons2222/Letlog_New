@@ -44,6 +44,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { RoleGuard } from "@/components/RoleGuard";
 
 // Mock data - would come from Supabase
 const mockTenancies = [
@@ -107,6 +108,14 @@ const statusColors: Record<string, string> = {
 };
 
 export default function TenanciesPage() {
+  return (
+    <RoleGuard allowedRoles={["landlord"]}>
+      <TenanciesContent />
+    </RoleGuard>
+  );
+}
+
+function TenanciesContent() {
   const [tenancies, setTenancies] = useState(mockTenancies);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");

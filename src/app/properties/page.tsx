@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { RoleGuard } from "@/components/RoleGuard";
 
 // Mock data - will be replaced with Supabase
 const mockProperties = [
@@ -79,6 +80,14 @@ const itemVariants = {
 };
 
 export default function PropertiesPage() {
+  return (
+    <RoleGuard allowedRoles={["landlord"]}>
+      <PropertiesContent />
+    </RoleGuard>
+  );
+}
+
+function PropertiesContent() {
   const [properties, setProperties] = useState(mockProperties);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);

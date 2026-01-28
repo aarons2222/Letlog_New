@@ -11,6 +11,7 @@ import {
   ChevronRight, Filter, Search, Home, ArrowLeft
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { RoleGuard } from "@/components/RoleGuard";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -99,6 +100,14 @@ const priorityConfig = {
 };
 
 export default function IssuesPage() {
+  return (
+    <RoleGuard allowedRoles={["landlord", "tenant"]}>
+      <IssuesContent />
+    </RoleGuard>
+  );
+}
+
+function IssuesContent() {
   const [filter, setFilter] = useState<IssueStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 

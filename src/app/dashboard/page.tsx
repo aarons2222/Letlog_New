@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
+import { type Role, routePermissions, roleConfig } from "@/lib/roles";
 import { 
   Home, Key, Wrench, AlertTriangle, FileText, 
   MessageSquare, Briefcase, Star, Plus, ClipboardList,
@@ -36,14 +38,19 @@ const fadeInUp: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
 };
 
-type Role = "landlord" | "tenant" | "contractor";
-
 interface DashboardStats {
   properties: number;
   tenancies: number;
   openIssues: number;
   pendingQuotes: number;
   complianceAlerts: number;
+  // Tenant-specific
+  myIssues: number;
+  // Contractor-specific
+  availableJobs: number;
+  activeJobs: number;
+  myQuotes: number;
+  avgRating: number;
 }
 
 interface Activity {
@@ -54,145 +61,163 @@ interface Activity {
   icon: string;
 }
 
-interface UserProfile {
-  id: string;
-  email: string;
-  full_name: string;
-  role: Role;
-}
+// Navigation items with role and icon info
+const navItems: { href: string; icon: React.ElementType; label: string; roles: Role[] }[] = [
+  { href: "/dashboard", icon: Home, label: "Dashboard", roles: ["landlord", "tenant", "contractor"] },
+  { href: "/properties", icon: Building2, label: "Properties", roles: ["landlord"] },
+  { href: "/tenancies", icon: Users, label: "Tenancies", roles: ["landlord"] },
+  { href: "/issues", icon: Wrench, label: "Issues", roles: ["landlord"] },
+  { href: "/issues", icon: Wrench, label: "My Issues", roles: ["tenant"] },
+  { href: "/tenders", icon: Briefcase, label: "Tenders", roles: ["landlord"] },
+  { href: "/tenders", icon: Briefcase, label: "Available Jobs", roles: ["contractor"] },
+  { href: "/quotes", icon: Receipt, label: "Quotes", roles: ["landlord"] },
+  { href: "/quotes", icon: Receipt, label: "My Quotes", roles: ["contractor"] },
+  { href: "/compliance", icon: AlertTriangle, label: "Compliance", roles: ["landlord"] },
+  { href: "/reviews", icon: Star, label: "Reviews", roles: ["landlord", "tenant", "contractor"] },
+  { href: "/calendar", icon: Calendar, label: "Calendar", roles: ["landlord"] },
+];
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [role, setRole] = useState<Role>("landlord");
+  const { role, isLoading: roleLoading, fullName, email, userId } = useRole();
   const [stats, setStats] = useState<DashboardStats>({
     properties: 0,
     tenancies: 0,
     openIssues: 0,
     pendingQuotes: 0,
     complianceAlerts: 0,
+    myIssues: 0,
+    availableJobs: 0,
+    activeJobs: 0,
+    myQuotes: 0,
+    avgRating: 0,
   });
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (roleLoading) return;
+
     async function loadDashboard() {
       const supabase = createClient();
       
       try {
-        // Get current user
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
         
         if (authError || !authUser) {
-          // For demo purposes, show mock data if not logged in
-          setUser({
-            id: 'demo',
-            email: 'demo@letlog.app',
-            full_name: 'Demo User',
-            role: 'landlord',
-          });
           setIsLoading(false);
           return;
         }
 
-        // Fetch user profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, email, full_name, role')
-          .eq('id', authUser.id)
-          .single();
-
-        if (profile) {
-          setUser({
-            id: profile.id,
-            email: profile.email || authUser.email || '',
-            full_name: profile.full_name || 'User',
-            role: (profile.role as Role) || 'landlord',
-          });
-          setRole((profile.role as Role) || 'landlord');
-        }
-
         // Fetch stats based on role
-        await loadStats(supabase, authUser.id, (profile?.role as Role) || 'landlord');
+        await loadStats(supabase, authUser.id, role || "landlord");
         
         // Fetch recent activity
         await loadActivity(supabase, authUser.id);
 
       } catch (err) {
-        console.error('Dashboard load error:', err);
-        setError('Failed to load dashboard data');
+        console.error("Dashboard load error:", err);
+        setError("Failed to load dashboard data");
       } finally {
         setIsLoading(false);
       }
     }
 
     loadDashboard();
-  }, []);
+  }, [role, roleLoading]);
 
-  async function loadStats(supabase: ReturnType<typeof createClient>, userId: string, userRole: Role) {
+  async function loadStats(supabase: ReturnType<typeof createClient>, uid: string, userRole: Role) {
     try {
-      if (userRole === 'landlord') {
-        // Count properties
+      if (userRole === "landlord") {
         const { count: propCount } = await supabase
-          .from('properties')
-          .select('*', { count: 'exact', head: true })
-          .eq('landlord_id', userId);
+          .from("properties")
+          .select("*", { count: "exact", head: true })
+          .eq("landlord_id", uid);
 
-        // Count active tenancies
         const { count: tenancyCount } = await supabase
-          .from('tenancies')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'active');
+          .from("tenancies")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "active");
 
-        // Count open issues
         const { count: issueCount } = await supabase
-          .from('issues')
-          .select('*', { count: 'exact', head: true })
-          .in('status', ['open', 'in_progress']);
+          .from("issues")
+          .select("*", { count: "exact", head: true })
+          .in("status", ["open", "in_progress"]);
 
-        // Count pending quotes
         const { count: quoteCount } = await supabase
-          .from('quotes')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending');
+          .from("quotes")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending");
 
-        // Count compliance alerts (items due soon)
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-        
-        const { count: complianceCount } = await supabase
-          .from('compliance_items')
-          .select('*', { count: 'exact', head: true })
-          .lt('expiry_date', thirtyDaysFromNow.toISOString())
-          .eq('status', 'valid');
 
-        setStats({
+        const { count: complianceCount } = await supabase
+          .from("compliance_items")
+          .select("*", { count: "exact", head: true })
+          .lt("expiry_date", thirtyDaysFromNow.toISOString())
+          .eq("status", "valid");
+
+        setStats((prev) => ({
+          ...prev,
           properties: propCount || 0,
           tenancies: tenancyCount || 0,
           openIssues: issueCount || 0,
           pendingQuotes: quoteCount || 0,
           complianceAlerts: complianceCount || 0,
-        });
+        }));
+      } else if (userRole === "tenant") {
+        const { count: myIssueCount } = await supabase
+          .from("issues")
+          .select("*", { count: "exact", head: true })
+          .eq("reported_by", uid)
+          .in("status", ["open", "in_progress"]);
+
+        setStats((prev) => ({
+          ...prev,
+          myIssues: myIssueCount || 0,
+        }));
+      } else if (userRole === "contractor") {
+        const { count: availableCount } = await supabase
+          .from("tenders")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "open");
+
+        const { count: myQuoteCount } = await supabase
+          .from("quotes")
+          .select("*", { count: "exact", head: true })
+          .eq("contractor_id", uid);
+
+        const { count: activeJobCount } = await supabase
+          .from("quotes")
+          .select("*", { count: "exact", head: true })
+          .eq("contractor_id", uid)
+          .eq("status", "accepted");
+
+        setStats((prev) => ({
+          ...prev,
+          availableJobs: availableCount || 0,
+          myQuotes: myQuoteCount || 0,
+          activeJobs: activeJobCount || 0,
+        }));
       }
     } catch (err) {
-      console.error('Stats load error:', err);
+      console.error("Stats load error:", err);
     }
   }
 
-  async function loadActivity(supabase: ReturnType<typeof createClient>, userId: string) {
+  async function loadActivity(supabase: ReturnType<typeof createClient>, uid: string) {
     try {
-      // Fetch recent issues
       const { data: recentIssues } = await supabase
-        .from('issues')
-        .select('id, title, status, created_at')
-        .order('created_at', { ascending: false })
+        .from("issues")
+        .select("id, title, status, created_at")
+        .order("created_at", { ascending: false })
         .limit(3);
 
-      // Fetch recent tenancies
       const { data: recentTenancies } = await supabase
-        .from('tenancies')
-        .select('id, status, start_date, created_at')
-        .order('created_at', { ascending: false })
+        .from("tenancies")
+        .select("id, status, start_date, created_at")
+        .order("created_at", { ascending: false })
         .limit(2);
 
       const activityItems: Activity[] = [];
@@ -200,36 +225,34 @@ export default function DashboardPage() {
       recentIssues?.forEach((issue) => {
         activityItems.push({
           id: `issue-${issue.id}`,
-          type: 'issue',
+          type: "issue",
           text: `Issue: ${issue.title}`,
           time: formatTimeAgo(issue.created_at),
-          icon: issue.status === 'open' ? '🔧' : '✅',
+          icon: issue.status === "open" ? "🔧" : "✅",
         });
       });
 
       recentTenancies?.forEach((tenancy) => {
         activityItems.push({
           id: `tenancy-${tenancy.id}`,
-          type: 'tenancy',
-          text: `Tenancy ${tenancy.status === 'active' ? 'started' : 'updated'}`,
+          type: "tenancy",
+          text: `Tenancy ${tenancy.status === "active" ? "started" : "updated"}`,
           time: formatTimeAgo(tenancy.created_at),
-          icon: '🏠',
+          icon: "🏠",
         });
       });
 
-      // Sort by time and take top 5
       activityItems.sort((a, b) => a.time.localeCompare(b.time));
       setActivities(activityItems.slice(0, 5));
     } catch (err) {
-      console.error('Activity load error:', err);
+      console.error("Activity load error:", err);
     }
   }
 
-  const roleConfig = {
-    landlord: { icon: Building2, label: "Landlord", color: "bg-blue-500" },
-    tenant: { icon: Key, label: "Tenant", color: "bg-green-500" },
-    contractor: { icon: Wrench, label: "Contractor", color: "bg-orange-500" },
-  };
+  // Filter nav items to current role
+  const filteredNav = role
+    ? navItems.filter((item) => item.roles.includes(role))
+    : [];
 
   if (error) {
     return (
@@ -264,8 +287,15 @@ export default function DashboardPage() {
           
           <div className="flex items-center gap-4">
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-slate-700">{user?.full_name}</p>
-              <p className="text-xs text-slate-500">{user?.email}</p>
+              <p className="text-sm font-medium text-slate-700">{fullName}</p>
+              <div className="flex items-center justify-end gap-2">
+                <p className="text-xs text-slate-500">{email}</p>
+                {role && (
+                  <Badge className={roleConfig[role].badgeColor + " text-xs"}>
+                    {roleConfig[role].label}
+                  </Badge>
+                )}
+              </div>
             </div>
             <Link href="/settings">
               <motion.div 
@@ -280,22 +310,21 @@ export default function DashboardPage() {
       </motion.header>
 
       <div className="flex">
-        {/* Sidebar Navigation */}
+        {/* Sidebar Navigation - filtered by role */}
         <aside className="hidden md:flex flex-col w-64 min-h-[calc(100vh-73px)] bg-white border-r border-slate-200 p-4">
           <nav className="space-y-1">
-            <NavLink href="/dashboard" icon={Home} label="Dashboard" active />
-            <NavLink href="/properties" icon={Building2} label="Properties" />
-            <NavLink href="/tenancies" icon={Users} label="Tenancies" />
-            <NavLink href="/issues" icon={Wrench} label="Issues" />
-            <NavLink href="/tenders" icon={Briefcase} label="Tenders" />
-            <NavLink href="/quotes" icon={Receipt} label="Quotes" />
-            <NavLink href="/compliance" icon={AlertTriangle} label="Compliance" />
-            <NavLink href="/reviews" icon={Star} label="Reviews" />
-            <NavLink href="/calendar" icon={Calendar} label="Calendar" />
+            {filteredNav.map((item) => (
+              <NavLink
+                key={item.href + item.label}
+                href={item.href}
+                icon={item.icon}
+                label={item.label}
+                active={item.href === "/dashboard"}
+              />
+            ))}
             
             <div className="pt-4 border-t border-slate-200 mt-4">
               <NavLink href="/settings" icon={Settings} label="Settings" />
-              <NavLink href="/pricing" icon={Star} label="Upgrade" />
             </div>
           </nav>
         </aside>
@@ -303,7 +332,7 @@ export default function DashboardPage() {
         {/* Main Content */}
         <main className="flex-1 p-6">
           <AnimatePresence mode="wait">
-            {isLoading ? (
+            {isLoading || roleLoading ? (
               <LoadingSkeleton key="loading" />
             ) : (
               <motion.div
@@ -323,21 +352,43 @@ export default function DashboardPage() {
                       👋
                     </motion.span>
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-800">
-                      Welcome back, {user?.full_name?.split(' ')[0] || 'there'}!
+                      Welcome back, {fullName?.split(" ")[0] || "there"}!
                     </h1>
                   </div>
-                  <p className="text-slate-600">Here's your property management overview.</p>
+                  <p className="text-slate-600">
+                    {role === "landlord" && "Here's your property management overview."}
+                    {role === "tenant" && "Here's your tenancy overview."}
+                    {role === "contractor" && "Here's your jobs overview."}
+                  </p>
                 </motion.div>
 
-                {/* Stats Grid */}
+                {/* Role-specific Stats */}
                 <motion.div 
                   className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
                   variants={containerVariants}
                 >
-                  <StatCard title="Properties" value={stats.properties.toString()} icon={Home} color="blue" />
-                  <StatCard title="Active Tenancies" value={stats.tenancies.toString()} icon={ClipboardList} color="green" />
-                  <StatCard title="Open Issues" value={stats.openIssues.toString()} icon={Wrench} color="orange" />
-                  <StatCard title="Compliance Alerts" value={stats.complianceAlerts.toString()} icon={AlertTriangle} color="red" />
+                  {role === "landlord" && (
+                    <>
+                      <StatCard title="Properties" value={stats.properties.toString()} icon={Home} color="blue" />
+                      <StatCard title="Active Tenancies" value={stats.tenancies.toString()} icon={ClipboardList} color="green" />
+                      <StatCard title="Open Issues" value={stats.openIssues.toString()} icon={Wrench} color="orange" />
+                      <StatCard title="Compliance Alerts" value={stats.complianceAlerts.toString()} icon={AlertTriangle} color="red" />
+                    </>
+                  )}
+                  {role === "tenant" && (
+                    <>
+                      <StatCard title="My Open Issues" value={stats.myIssues.toString()} icon={Wrench} color="orange" />
+                      <StatCard title="Reviews" value="—" icon={Star} color="blue" />
+                    </>
+                  )}
+                  {role === "contractor" && (
+                    <>
+                      <StatCard title="Available Jobs" value={stats.availableJobs.toString()} icon={Briefcase} color="blue" />
+                      <StatCard title="My Quotes" value={stats.myQuotes.toString()} icon={Receipt} color="green" />
+                      <StatCard title="Active Jobs" value={stats.activeJobs.toString()} icon={ClipboardList} color="orange" />
+                      <StatCard title="Rating" value="—" icon={Star} color="red" />
+                    </>
+                  )}
                 </motion.div>
 
                 {/* Quick Actions + Activity */}
@@ -349,11 +400,31 @@ export default function DashboardPage() {
                         <CardDescription>Common tasks</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-2">
-                        <QuickAction href="/properties/new" icon={Plus} label="Add Property" />
-                        <QuickAction href="/tenancies" icon={Users} label="Manage Tenancies" />
-                        <QuickAction href="/issues/new" icon={Wrench} label="Report Issue" />
-                        <QuickAction href="/reviews" icon={Star} label="View Reviews" />
-                        <QuickAction href="/compliance" icon={AlertTriangle} label="Check Compliance" />
+                        {role === "landlord" && (
+                          <>
+                            <QuickAction href="/properties/new" icon={Plus} label="Add Property" />
+                            <QuickAction href="/tenancies" icon={Users} label="Manage Tenancies" />
+                            <QuickAction href="/issues/new" icon={Wrench} label="Report Issue" />
+                            <QuickAction href="/tenders/new" icon={Briefcase} label="Post a Job" />
+                            <QuickAction href="/compliance" icon={AlertTriangle} label="Check Compliance" />
+                          </>
+                        )}
+                        {role === "tenant" && (
+                          <>
+                            <QuickAction href="/issues/new" icon={Plus} label="Report Issue" />
+                            <QuickAction href="/issues" icon={Wrench} label="View My Issues" />
+                            <QuickAction href="/reviews" icon={Star} label="Leave a Review" />
+                            <QuickAction href="/settings" icon={Settings} label="Account Settings" />
+                          </>
+                        )}
+                        {role === "contractor" && (
+                          <>
+                            <QuickAction href="/tenders" icon={Briefcase} label="Browse Available Jobs" />
+                            <QuickAction href="/quotes" icon={Receipt} label="My Quotes" />
+                            <QuickAction href="/reviews" icon={Star} label="View My Rating" />
+                            <QuickAction href="/settings" icon={Settings} label="Account Settings" />
+                          </>
+                        )}
                       </CardContent>
                     </Card>
                   </motion.div>
@@ -400,7 +471,7 @@ function NavLink({ href, icon: Icon, label, active }: { href: string; icon: Reac
   return (
     <Link href={href}>
       <div className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-        active ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+        active ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
       }`}>
         <Icon className="w-5 h-5" />
         <span className="font-medium">{label}</span>
