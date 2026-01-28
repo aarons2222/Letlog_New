@@ -156,7 +156,7 @@ export default function PropertiesPage() {
     total: properties.length,
     occupied: properties.filter(p => p.status === "occupied").length,
     vacant: properties.filter(p => p.status === "vacant").length,
-    expiring: properties.filter(p => p.compliance_status === "expiring").length,
+    expiring: properties.filter(p => p.compliance_status === "expiring" || p.compliance_status === "expired").length,
   };
 
   if (isLoading) {

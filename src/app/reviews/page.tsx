@@ -29,6 +29,8 @@ import {
   PenLine,
   ShieldAlert
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
 
 type Role = "landlord" | "tenant" | "contractor";
 
@@ -121,6 +123,7 @@ interface ReceivedReview {
 }
 
 export default function ReviewsPage() {
+  const { userId, role } = useRole();
   const [activeTab, setActiveTab] = useState("pending");
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);

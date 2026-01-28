@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RoleGuard } from "@/components/RoleGuard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -162,6 +163,78 @@ export default function CompliancePage() {
 
     fetchCompliance();
   }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    async function fetchCompliance() {
+      const supabase = createClient();
+      try {
+        const { data, error } = await supabase
+          .from("compliance_records")
+          .select(`
+            *,
+            properties (
+              id, address_line_1, address_line_2, city, postcode, landlord_id
+            )
+          `)
+          .order("expiry_date", { ascending: true });
+
+        if (error) throw error;
+
+        // Filter to landlord's properties and compute status
+        const now = new Date();
+        const thirtyDays = new Date();
+        thirtyDays.setDate(thirtyDays.getDate() + 30);
+
+        const mapped: ComplianceRecord[] = (data || [])
+          .filter((r: any) => r.properties?.landlord_id === userId)
+          .map((r: any) => {
+            const prop = r.properties;
+            const address = prop
+              ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+                  .filter(Boolean)
+                  .join(", ")
+              : "Unknown property";
+
+            // Compute status from expiry date
+            let status = r.status || "valid";
+            if (r.expiry_date) {
+              const expiry = new Date(r.expiry_date);
+              if (expiry < now) {
+                status = "expired";
+              } else if (expiry <= thirtyDays) {
+                status = "expiring_soon";
+              } else {
+                status = "valid";
+              }
+            }
+
+            return {
+              id: r.id,
+              property_id: r.property_id || "",
+              property_address: address,
+              compliance_type: r.compliance_type || r.type || "gas_safety",
+              issue_date: r.issue_date || r.issued_date || "",
+              expiry_date: r.expiry_date || "",
+              status,
+              certificate_number: r.certificate_number || r.reference || "",
+              inspector_name: r.inspector_name || r.provider || "",
+              document_url: r.document_url || null,
+            };
+          });
+
+        setRecords(mapped);
+      } catch (err) {
+        console.error("Error fetching compliance records:", err);
+        toast.error("Failed to load compliance records");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchCompliance();
+  }, [userId]);
 
   const filteredRecords = records.filter(r => {
     const matchesSearch = 
@@ -483,9 +556,11 @@ function ComplianceCard({ record }: { record: ComplianceRecord }) {
                     : `${Math.abs(daysUntilExpiry)} days overdue`
                   }
                 </span>
-                <span className="text-slate-400">
-                  #{record.certificate_number}
-                </span>
+                {record.certificate_number && (
+                  <span className="text-slate-400">
+                    #{record.certificate_number}
+                  </span>
+                )}
               </div>
             </div>
 

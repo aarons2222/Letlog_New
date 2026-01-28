@@ -368,7 +368,7 @@ export default function TenanciesPage() {
                       Tenants
                     </div>
                     <div className="space-y-1">
-                      {tenancy.tenants.map((tenant) => (
+                      {tenancy.tenants.length > 0 ? tenancy.tenants.map((tenant) => (
                         <div key={tenant.id} className="text-sm text-slate-700">
                           {tenant.name}
                           {tenant.isLead && (
@@ -389,9 +389,9 @@ export default function TenanciesPage() {
                       Term
                     </div>
                     <div className="text-sm text-slate-700">
-                      {new Date(tenancy.startDate).toLocaleDateString('en-GB', { 
+                      {tenancy.startDate ? new Date(tenancy.startDate).toLocaleDateString('en-GB', { 
                         day: 'numeric', month: 'short', year: 'numeric' 
-                      })}
+                      }) : "—"}
                       {" → "}
                       {tenancy.endDate ? new Date(tenancy.endDate).toLocaleDateString('en-GB', { 
                         day: 'numeric', month: 'short', year: 'numeric' 
@@ -476,7 +476,7 @@ export default function TenanciesPage() {
               <div className="p-4 bg-slate-50 rounded-xl">
                 <div className="font-medium text-slate-900">{selectedTenancy.property.address}</div>
                 <div className="text-sm text-slate-600 mt-1">
-                  {selectedTenancy.tenants.map(t => t.name).join(", ")}
+                  {selectedTenancy.tenants.map(t => t.name).join(", ") || "No tenants"}
                 </div>
               </div>
 
@@ -572,9 +572,9 @@ export default function TenanciesPage() {
             <Button variant="outline" onClick={() => setInviteOpen(false)} className="rounded-xl">
               Cancel
             </Button>
-            <Button onClick={sendInvitation} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={sendInvitation} disabled={inviteSending} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
               <Mail className="w-4 h-4 mr-2" />
-              Send Invitation
+              {inviteSending ? "Sending..." : "Send Invitation"}
             </Button>
           </DialogFooter>
         </DialogContent>

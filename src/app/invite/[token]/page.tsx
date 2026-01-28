@@ -133,6 +133,8 @@ export default function InvitePage() {
       toast.error("Passwords don't match");
       return;
     }
+
+    if (!invitation) return;
     
     setSubmitting(true);
     const supabase = createClient();
@@ -230,7 +232,9 @@ export default function InvitePage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3">
-            <Image src="/logo.svg" alt="LetLog" width={48} height={48} className="rounded-xl shadow-lg" />
+            <div className="w-12 h-12 bg-gradient-to-br from-[#E8998D] to-[#F4A261] rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-xl">L</span>
+            </div>
             <span className="font-semibold text-2xl tracking-tight">
               <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">Let</span>
               <span>Log</span>
@@ -243,7 +247,7 @@ export default function InvitePage() {
             <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Key className="w-7 h-7 text-emerald-600" />
             </div>
-            <CardTitle className="text-xl">You've Been Invited!</CardTitle>
+            <CardTitle className="text-xl">You&apos;ve Been Invited!</CardTitle>
             <CardDescription className="text-base">
               {invitation?.invitedBy} has invited you to join as a tenant
             </CardDescription>
@@ -275,7 +279,7 @@ export default function InvitePage() {
                 <Input
                   id="email"
                   type="email"
-                  value={invitation?.email}
+                  value={invitation?.email || ""}
                   disabled
                   className="rounded-xl bg-slate-50"
                 />

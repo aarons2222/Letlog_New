@@ -131,6 +131,80 @@ export default function TendersPage() {
     fetchTenders();
   }, []);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    async function fetchTenders() {
+      const supabase = createClient();
+      try {
+        let query = supabase
+          .from("tenders")
+          .select(`
+            *,
+            properties (
+              id, address_line_1, address_line_2, city, postcode
+            ),
+            profiles!tenders_landlord_id_fkey (
+              full_name
+            )
+          `)
+          .order("created_at", { ascending: false });
+
+        // Contractors see only open tenders, landlords see their own
+        if (role === "contractor") {
+          query = query.eq("status", "open");
+        } else if (role === "landlord") {
+          query = query.eq("landlord_id", userId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        // For each tender, count quotes
+        const enriched: Tender[] = await Promise.all(
+          (data || []).map(async (t: any) => {
+            const { count: quotesCount } = await supabase
+              .from("quotes")
+              .select("*", { count: "exact", head: true })
+              .eq("tender_id", t.id);
+
+            const prop = t.properties;
+            const address = prop
+              ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+                  .filter(Boolean)
+                  .join(", ")
+              : "Unknown property";
+
+            return {
+              id: t.id,
+              title: t.title || "Untitled Job",
+              description: t.description || "",
+              property_address: address,
+              trade_required: t.trade_required || "general",
+              budget_min: t.budget_min || 0,
+              budget_max: t.budget_max || 0,
+              deadline: t.deadline || "",
+              status: t.status || "open",
+              quotes_count: quotesCount || 0,
+              posted_date: t.created_at ? new Date(t.created_at).toISOString().split("T")[0] : "",
+              landlord_name: t.profiles?.full_name || "Unknown",
+              urgency: t.urgency || "medium",
+            };
+          })
+        );
+
+        setTenders(enriched);
+      } catch (err) {
+        console.error("Error fetching tenders:", err);
+        toast.error("Failed to load jobs");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchTenders();
+  }, [userId, role]);
+
   const filteredTenders = tenders.filter(t => {
     const matchesSearch = 
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

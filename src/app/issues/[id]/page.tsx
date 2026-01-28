@@ -227,6 +227,7 @@ export default function IssueDetailPage() {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "";
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
@@ -287,9 +288,9 @@ export default function IssueDetailPage() {
                 {issue.property}
               </div>
             </div>
-            <Badge className={statusConfig[issue.status].color}>
+            <Badge className={statusConfig[issue.status]?.color || "bg-slate-100 text-slate-600"}>
               <StatusIcon className="w-3 h-3 mr-1" />
-              {statusConfig[issue.status].label}
+              {statusConfig[issue.status]?.label || issue.status}
             </Badge>
           </div>
         </div>
@@ -371,7 +372,7 @@ export default function IssueDetailPage() {
                         {formatDate(issue.createdAt)}
                       </span>
                       <Badge variant="outline">{issue.category}</Badge>
-                      <Badge className={priorityConfig[issue.priority].color}>
+                      <Badge className={priorityConfig[issue.priority]?.color || "bg-slate-100 text-slate-600"}>
                         {issue.priority}
                       </Badge>
                     </div>
@@ -395,7 +396,7 @@ export default function IssueDetailPage() {
 
                 <div className="space-y-4">
                   <AnimatePresence>
-                    {issue.timeline.map((item, index) => (
+                    {timeline.map((item, index) => (
                       <motion.div
                         key={item.id}
                         initial={{ opacity: 0, x: -20 }}
@@ -411,7 +412,7 @@ export default function IssueDetailPage() {
                           }`}>
                             <User className="w-4 h-4" />
                           </div>
-                          {index < issue.timeline.length - 1 && (
+                          {index < timeline.length - 1 && (
                             <div className="w-0.5 flex-1 bg-slate-200 my-2" />
                           )}
                         </div>

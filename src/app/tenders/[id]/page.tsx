@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RoleGuard } from "@/components/RoleGuard";
 import {
   Dialog,
   DialogContent,
@@ -224,7 +225,7 @@ export default function TenderDetailPage() {
   }, [tenderId]);
 
   const handleSubmitQuote = async () => {
-    if (!quoteData.amount || !quoteData.description || !quoteData.available_from) {
+    if (!quoteData.amount || !quoteData.description || !quoteData.available_from || !tender) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -722,14 +723,7 @@ export default function TenderDetailPage() {
                       <h4 className="font-medium text-slate-800 dark:text-white">
                         {tender.landlord_name}
                       </h4>
-                      <div className="flex items-center gap-1 text-sm text-slate-500">
-                        <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                        {tender.landlord_rating} rating
-                      </div>
                     </div>
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    <p>{tender.landlord_jobs_posted} jobs posted</p>
                   </div>
                 </CardContent>
               </Card>

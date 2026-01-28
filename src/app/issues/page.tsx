@@ -331,7 +331,7 @@ function StatCard({
 }
 
 function IssueCard({ issue }: { issue: Issue }) {
-  const StatusIcon = statusConfig[issue.status].icon;
+  const StatusIcon = statusConfig[issue.status]?.icon || AlertCircle;
   
   return (
     <motion.div
@@ -347,7 +347,7 @@ function IssueCard({ issue }: { issue: Issue }) {
           <CardContent className="p-4">
             <div className="flex items-start gap-4">
               <motion.div 
-                className={`w-10 h-10 rounded-xl flex items-center justify-center ${statusConfig[issue.status].color} border`}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center ${statusConfig[issue.status]?.color || "bg-slate-100 text-slate-600"} border`}
                 whileHover={{ scale: 1.1, rotate: 5 }}
               >
                 <StatusIcon className="w-5 h-5" />
@@ -358,7 +358,7 @@ function IssueCard({ issue }: { issue: Issue }) {
                   <h3 className="font-semibold text-slate-800 dark:text-white group-hover:text-blue-600 transition-colors truncate">
                     {issue.title}
                   </h3>
-                  <Badge className={priorityConfig[issue.priority].color}>
+                  <Badge className={priorityConfig[issue.priority]?.color || "bg-slate-100 text-slate-600"}>
                     {issue.priority}
                   </Badge>
                 </div>

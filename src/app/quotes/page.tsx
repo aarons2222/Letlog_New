@@ -168,6 +168,77 @@ export default function QuotesPage() {
     fetchQuotes();
   }, []);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    async function fetchQuotes() {
+      const supabase = createClient();
+      try {
+        let query = supabase
+          .from("quotes")
+          .select(`
+            *,
+            tenders (
+              id, title, property_id,
+              properties (
+                address_line_1, address_line_2, city, postcode
+              )
+            ),
+            profiles!quotes_contractor_id_fkey (
+              full_name
+            )
+          `)
+          .order("created_at", { ascending: false });
+
+        // Contractors see their quotes, landlords see quotes on their tenders
+        if (role === "contractor") {
+          query = query.eq("contractor_id", userId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const mapped: QuoteItem[] = (data || []).map((q: any) => {
+          const tender = q.tenders;
+          const prop = tender?.properties;
+          const address = prop
+            ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+                .filter(Boolean)
+                .join(", ")
+            : "Unknown property";
+
+          return {
+            id: q.id,
+            tender_id: q.tender_id || "",
+            tender_title: tender?.title || "Unknown Job",
+            property_address: address,
+            amount: q.amount || 0,
+            description: q.description || q.message || "",
+            status: q.status || "pending",
+            submitted_date: q.created_at ? new Date(q.created_at).toISOString().split("T")[0] : "",
+            landlord_name: q.profiles?.full_name || "Unknown",
+            warranty_months: q.warranty_months || 0,
+            accepted_date: q.accepted_date,
+            rejection_reason: q.rejection_reason,
+            completed_date: q.completed_date,
+            paid: q.paid || false,
+            review_rating: q.review_rating,
+            review_text: q.review_text,
+          };
+        });
+
+        setQuotes(mapped);
+      } catch (err) {
+        console.error("Error fetching quotes:", err);
+        toast.error("Failed to load quotes");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchQuotes();
+  }, [userId, role]);
+
   const filteredQuotes = filterStatus 
     ? quotes.filter(q => q.status === filterStatus)
     : quotes;

@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
+import { type Role, routePermissions, roleConfig } from "@/lib/roles";
 import { 
   Home, Key, Wrench, AlertTriangle, FileText, 
   MessageSquare, Briefcase, Star, Plus, ClipboardList,
@@ -36,14 +38,19 @@ const fadeInUp: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
 };
 
-type Role = "landlord" | "tenant" | "contractor";
-
 interface DashboardStats {
   properties: number;
   tenancies: number;
   openIssues: number;
   pendingQuotes: number;
   complianceAlerts: number;
+  // Tenant-specific
+  myIssues: number;
+  // Contractor-specific
+  availableJobs: number;
+  activeJobs: number;
+  myQuotes: number;
+  avgRating: number;
 }
 
 interface Activity {
@@ -54,12 +61,21 @@ interface Activity {
   icon: string;
 }
 
-interface UserProfile {
-  id: string;
-  email: string;
-  full_name: string;
-  role: Role;
-}
+// Navigation items with role and icon info
+const navItems: { href: string; icon: React.ElementType; label: string; roles: Role[] }[] = [
+  { href: "/dashboard", icon: Home, label: "Dashboard", roles: ["landlord", "tenant", "contractor"] },
+  { href: "/properties", icon: Building2, label: "Properties", roles: ["landlord"] },
+  { href: "/tenancies", icon: Users, label: "Tenancies", roles: ["landlord"] },
+  { href: "/issues", icon: Wrench, label: "Issues", roles: ["landlord"] },
+  { href: "/issues", icon: Wrench, label: "My Issues", roles: ["tenant"] },
+  { href: "/tenders", icon: Briefcase, label: "Tenders", roles: ["landlord"] },
+  { href: "/tenders", icon: Briefcase, label: "Available Jobs", roles: ["contractor"] },
+  { href: "/quotes", icon: Receipt, label: "Quotes", roles: ["landlord"] },
+  { href: "/quotes", icon: Receipt, label: "My Quotes", roles: ["contractor"] },
+  { href: "/compliance", icon: AlertTriangle, label: "Compliance", roles: ["landlord"] },
+  { href: "/reviews", icon: Star, label: "Reviews", roles: ["landlord", "tenant", "contractor"] },
+  { href: "/calendar", icon: Calendar, label: "Calendar", roles: ["landlord"] },
+];
 
 // #5: Upcoming events for tenants
 interface UpcomingEvent {
@@ -73,14 +89,18 @@ interface UpcomingEvent {
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [role, setRole] = useState<Role>("landlord");
+  const { role, isLoading: roleLoading, fullName, email, userId } = useRole();
   const [stats, setStats] = useState<DashboardStats>({
     properties: 0,
     tenancies: 0,
     openIssues: 0,
     pendingQuotes: 0,
     complianceAlerts: 0,
+    myIssues: 0,
+    availableJobs: 0,
+    activeJobs: 0,
+    myQuotes: 0,
+    avgRating: 0,
   });
   const [activities, setActivities] = useState<Activity[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
@@ -88,21 +108,15 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (roleLoading) return;
+
     async function loadDashboard() {
       const supabase = createClient();
       
       try {
-        // Get current user
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
         
         if (authError || !authUser) {
-          // For demo purposes, show mock data if not logged in
-          setUser({
-            id: 'demo',
-            email: 'demo@letlog.app',
-            full_name: 'Demo User',
-            role: 'landlord',
-          });
           setIsLoading(false);
           return;
         }
@@ -138,54 +152,50 @@ export default function DashboardPage() {
         }
 
       } catch (err) {
-        console.error('Dashboard load error:', err);
-        setError('Failed to load dashboard data');
+        console.error("Dashboard load error:", err);
+        setError("Failed to load dashboard data");
       } finally {
         setIsLoading(false);
       }
     }
 
     loadDashboard();
-  }, []);
+  }, [role, roleLoading]);
 
-  async function loadStats(supabase: ReturnType<typeof createClient>, userId: string, userRole: Role) {
+  async function loadStats(supabase: ReturnType<typeof createClient>, uid: string, userRole: Role) {
     try {
-      if (userRole === 'landlord') {
-        // Count properties
+      if (userRole === "landlord") {
         const { count: propCount } = await supabase
-          .from('properties')
-          .select('*', { count: 'exact', head: true })
-          .eq('landlord_id', userId);
+          .from("properties")
+          .select("*", { count: "exact", head: true })
+          .eq("landlord_id", uid);
 
-        // Count active tenancies
         const { count: tenancyCount } = await supabase
-          .from('tenancies')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'active');
+          .from("tenancies")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "active");
 
-        // Count open issues
         const { count: issueCount } = await supabase
-          .from('issues')
-          .select('*', { count: 'exact', head: true })
-          .in('status', ['open', 'in_progress']);
+          .from("issues")
+          .select("*", { count: "exact", head: true })
+          .in("status", ["open", "in_progress"]);
 
-        // Count pending quotes
         const { count: quoteCount } = await supabase
-          .from('quotes')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending');
+          .from("quotes")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending");
 
-        // Count compliance alerts (items due soon)
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-        
-        const { count: complianceCount } = await supabase
-          .from('compliance_items')
-          .select('*', { count: 'exact', head: true })
-          .lt('expiry_date', thirtyDaysFromNow.toISOString())
-          .eq('status', 'valid');
 
-        setStats({
+        const { count: complianceCount } = await supabase
+          .from("compliance_items")
+          .select("*", { count: "exact", head: true })
+          .lt("expiry_date", thirtyDaysFromNow.toISOString())
+          .eq("status", "valid");
+
+        setStats((prev) => ({
+          ...prev,
           properties: propCount || 0,
           tenancies: tenancyCount || 0,
           openIssues: issueCount || 0,
@@ -209,24 +219,22 @@ export default function DashboardPage() {
         });
       }
     } catch (err) {
-      console.error('Stats load error:', err);
+      console.error("Stats load error:", err);
     }
   }
 
-  async function loadActivity(supabase: ReturnType<typeof createClient>, userId: string) {
+  async function loadActivity(supabase: ReturnType<typeof createClient>, uid: string) {
     try {
-      // Fetch recent issues
       const { data: recentIssues } = await supabase
-        .from('issues')
-        .select('id, title, status, created_at')
-        .order('created_at', { ascending: false })
+        .from("issues")
+        .select("id, title, status, created_at")
+        .order("created_at", { ascending: false })
         .limit(3);
 
-      // Fetch recent tenancies
       const { data: recentTenancies } = await supabase
-        .from('tenancies')
-        .select('id, status, start_date, created_at')
-        .order('created_at', { ascending: false })
+        .from("tenancies")
+        .select("id, status, start_date, created_at")
+        .order("created_at", { ascending: false })
         .limit(2);
 
       const activityItems: Activity[] = [];
@@ -234,28 +242,27 @@ export default function DashboardPage() {
       recentIssues?.forEach((issue) => {
         activityItems.push({
           id: `issue-${issue.id}`,
-          type: 'issue',
+          type: "issue",
           text: `Issue: ${issue.title}`,
           time: formatTimeAgo(issue.created_at),
-          icon: issue.status === 'open' ? '🔧' : '✅',
+          icon: issue.status === "open" ? "🔧" : "✅",
         });
       });
 
       recentTenancies?.forEach((tenancy) => {
         activityItems.push({
           id: `tenancy-${tenancy.id}`,
-          type: 'tenancy',
-          text: `Tenancy ${tenancy.status === 'active' ? 'started' : 'updated'}`,
+          type: "tenancy",
+          text: `Tenancy ${tenancy.status === "active" ? "started" : "updated"}`,
           time: formatTimeAgo(tenancy.created_at),
-          icon: '🏠',
+          icon: "🏠",
         });
       });
 
-      // Sort by time and take top 5
       activityItems.sort((a, b) => a.time.localeCompare(b.time));
       setActivities(activityItems.slice(0, 5));
     } catch (err) {
-      console.error('Activity load error:', err);
+      console.error("Activity load error:", err);
     }
   }
 
@@ -392,8 +399,15 @@ export default function DashboardPage() {
           
           <div className="flex items-center gap-4">
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-slate-700">{user?.full_name}</p>
-              <p className="text-xs text-slate-500">{user?.email}</p>
+              <p className="text-sm font-medium text-slate-700">{fullName}</p>
+              <div className="flex items-center justify-end gap-2">
+                <p className="text-xs text-slate-500">{email}</p>
+                {role && (
+                  <Badge className={roleConfig[role].badgeColor + " text-xs"}>
+                    {roleConfig[role].label}
+                  </Badge>
+                )}
+              </div>
             </div>
             <Link href="/settings">
               <motion.div 
@@ -445,7 +459,6 @@ export default function DashboardPage() {
             
             <div className="pt-4 border-t border-slate-200 mt-4">
               <NavLink href="/settings" icon={Settings} label="Settings" />
-              <NavLink href="/pricing" icon={Star} label="Upgrade" />
             </div>
           </nav>
         </aside>
@@ -453,7 +466,7 @@ export default function DashboardPage() {
         {/* Main Content */}
         <main className="flex-1 p-6">
           <AnimatePresence mode="wait">
-            {isLoading ? (
+            {isLoading || roleLoading ? (
               <LoadingSkeleton key="loading" />
             ) : (
               <motion.div
@@ -473,7 +486,7 @@ export default function DashboardPage() {
                       👋
                     </motion.span>
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-800">
-                      Welcome back, {user?.full_name?.split(' ')[0] || 'there'}!
+                      Welcome back, {fullName?.split(" ")[0] || "there"}!
                     </h1>
                   </div>
                   <p className="text-slate-600">
@@ -660,7 +673,7 @@ function NavLink({ href, icon: Icon, label, active }: { href: string; icon: Reac
   return (
     <Link href={href}>
       <div className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-        active ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+        active ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
       }`}>
         <Icon className="w-5 h-5" />
         <span className="font-medium">{label}</span>
