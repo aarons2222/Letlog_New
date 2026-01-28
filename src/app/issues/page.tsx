@@ -176,15 +176,6 @@ export default function IssuesPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <ArrowLeft className="w-5 h-5 text-slate-600" />
-                </motion.button>
-              </Link>
               <div>
                 <h1 className="text-xl font-bold text-slate-800 dark:text-white">Issues</h1>
                 <p className="text-sm text-slate-500">Manage maintenance requests</p>

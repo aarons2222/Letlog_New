@@ -280,12 +280,6 @@ export default function QuotesPage() {
       >
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                Dashboard
-              </Button>
-            </Link>
             <div className="flex items-center gap-2">
               <FileText className="w-6 h-6 text-blue-500" />
               <h1 className="text-xl font-bold text-slate-800 dark:text-white">My Quotes</h1>
