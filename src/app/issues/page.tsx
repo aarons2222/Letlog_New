@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { RoleGuard } from "@/components/RoleGuard";
+import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
+import { toast } from "sonner";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -46,46 +49,6 @@ interface Issue {
   photos: number;
 }
 
-// Mock data
-const mockIssues: Issue[] = [
-  {
-    id: "1",
-    title: "Boiler not heating water",
-    description: "Hot water stopped working yesterday evening. Tried resetting but no luck.",
-    property: "42 Oak Lane, Flat 2",
-    status: "in_progress",
-    priority: "high",
-    createdAt: "2026-01-25",
-    updatedAt: "2026-01-27",
-    category: "Plumbing",
-    photos: 2,
-  },
-  {
-    id: "2", 
-    title: "Broken window latch",
-    description: "Bedroom window won't close properly, latch mechanism is broken.",
-    property: "42 Oak Lane, Flat 2",
-    status: "open",
-    priority: "medium",
-    createdAt: "2026-01-26",
-    updatedAt: "2026-01-26",
-    category: "Windows & Doors",
-    photos: 1,
-  },
-  {
-    id: "3",
-    title: "Damp patch on ceiling",
-    description: "Small damp patch appeared in bathroom ceiling after heavy rain.",
-    property: "15 High Street",
-    status: "resolved",
-    priority: "medium",
-    createdAt: "2026-01-20",
-    updatedAt: "2026-01-24",
-    category: "Damp & Mould",
-    photos: 3,
-  },
-];
-
 const statusConfig = {
   open: { label: "Open", color: "bg-orange-100 text-orange-700 border-orange-200", icon: AlertCircle },
   in_progress: { label: "In Progress", color: "bg-blue-100 text-blue-700 border-blue-200", icon: Clock },
@@ -108,10 +71,69 @@ export default function IssuesPage() {
 }
 
 function IssuesContent() {
+  const { userId, role } = useRole();
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<IssueStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredIssues = mockIssues.filter(issue => {
+  useEffect(() => {
+    if (!userId) return;
+
+    async function fetchIssues() {
+      const supabase = createClient();
+      try {
+        let query = supabase
+          .from("issues")
+          .select(`
+            *,
+            properties (
+              id, address_line_1, address_line_2, city
+            )
+          `)
+          .order("created_at", { ascending: false });
+
+        // Tenant sees only their issues
+        if (role === "tenant") {
+          query = query.eq("reported_by", userId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const mapped: Issue[] = (data || []).map((issue: any) => {
+          const prop = issue.properties;
+          const propertyAddress = prop
+            ? [prop.address_line_1, prop.address_line_2, prop.city].filter(Boolean).join(", ")
+            : "Unknown property";
+
+          return {
+            id: issue.id,
+            title: issue.title || "Untitled Issue",
+            description: issue.description || "",
+            property: propertyAddress,
+            status: (issue.status as IssueStatus) || "open",
+            priority: (issue.priority as IssuePriority) || "medium",
+            createdAt: issue.created_at || "",
+            updatedAt: issue.updated_at || issue.created_at || "",
+            category: issue.category || "General",
+            photos: issue.photo_count || 0,
+          };
+        });
+
+        setIssues(mapped);
+      } catch (err) {
+        console.error("Error fetching issues:", err);
+        toast.error("Failed to load issues");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchIssues();
+  }, [userId, role]);
+
+  const filteredIssues = issues.filter(issue => {
     const matchesFilter = filter === "all" || issue.status === filter;
     const matchesSearch = issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          issue.property.toLowerCase().includes(searchQuery.toLowerCase());
@@ -119,11 +141,30 @@ function IssuesContent() {
   });
 
   const stats = {
-    total: mockIssues.length,
-    open: mockIssues.filter(i => i.status === "open").length,
-    inProgress: mockIssues.filter(i => i.status === "in_progress").length,
-    resolved: mockIssues.filter(i => i.status === "resolved").length,
+    total: issues.length,
+    open: issues.filter(i => i.status === "open").length,
+    inProgress: issues.filter(i => i.status === "in_progress").length,
+    resolved: issues.filter(i => i.status === "resolved").length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-20 bg-slate-100 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-24 bg-slate-100 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -291,7 +332,7 @@ function StatCard({
 }
 
 function IssueCard({ issue }: { issue: Issue }) {
-  const StatusIcon = statusConfig[issue.status].icon;
+  const StatusIcon = statusConfig[issue.status]?.icon || AlertCircle;
   
   return (
     <motion.div
@@ -307,7 +348,7 @@ function IssueCard({ issue }: { issue: Issue }) {
           <CardContent className="p-4">
             <div className="flex items-start gap-4">
               <motion.div 
-                className={`w-10 h-10 rounded-xl flex items-center justify-center ${statusConfig[issue.status].color} border`}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center ${statusConfig[issue.status]?.color || "bg-slate-100 text-slate-600"} border`}
                 whileHover={{ scale: 1.1, rotate: 5 }}
               >
                 <StatusIcon className="w-5 h-5" />
@@ -318,7 +359,7 @@ function IssueCard({ issue }: { issue: Issue }) {
                   <h3 className="font-semibold text-slate-800 dark:text-white group-hover:text-blue-600 transition-colors truncate">
                     {issue.title}
                   </h3>
-                  <Badge className={priorityConfig[issue.priority].color}>
+                  <Badge className={priorityConfig[issue.priority]?.color || "bg-slate-100 text-slate-600"}>
                     {issue.priority}
                   </Badge>
                 </div>

@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { RoleGuard } from "@/components/RoleGuard";
+import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
+import { toast } from "sonner";
 import { 
   ArrowLeft, AlertCircle, Clock, CheckCircle2, 
   MessageSquare, Send, Home, Calendar, User,
@@ -27,59 +31,26 @@ const itemVariants: Variants = {
   visible: { opacity: 1, y: 0 },
 };
 
-// Mock data for a single issue
-const mockIssue = {
-  id: "1",
-  title: "Boiler not heating water",
-  description: "Hot water stopped working yesterday evening around 7pm. The boiler display shows an error code (E119). I tried resetting it by turning it off and on but the problem persists. Cold water works fine. This is affecting our ability to shower and wash dishes.",
-  property: "42 Oak Lane, Flat 2",
-  status: "in_progress" as const,
-  priority: "high" as const,
-  category: "Plumbing",
-  createdAt: "2026-01-25T18:30:00",
-  updatedAt: "2026-01-27T10:15:00",
-  photos: [
-    "/api/placeholder/400/300",
-    "/api/placeholder/400/300",
-  ],
-  timeline: [
-    { 
-      id: 1, 
-      type: "created", 
-      message: "Issue reported", 
-      user: "You",
-      timestamp: "2026-01-25T18:30:00"
-    },
-    { 
-      id: 2, 
-      type: "status", 
-      message: "Status changed to In Progress", 
-      user: "Landlord",
-      timestamp: "2026-01-26T09:00:00"
-    },
-    { 
-      id: 3, 
-      type: "comment", 
-      message: "I've contacted a plumber. They can come tomorrow between 10am-2pm. Will that work?", 
-      user: "Landlord",
-      timestamp: "2026-01-26T09:15:00"
-    },
-    { 
-      id: 4, 
-      type: "comment", 
-      message: "Yes, that works. I'll be home.", 
-      user: "You",
-      timestamp: "2026-01-26T10:30:00"
-    },
-    { 
-      id: 5, 
-      type: "comment", 
-      message: "Great, plumber confirmed for tomorrow 11am. His name is Dave from QuickFix Plumbing.", 
-      user: "Landlord",
-      timestamp: "2026-01-26T14:00:00"
-    },
-  ],
-};
+interface IssueDetail {
+  id: string;
+  title: string;
+  description: string;
+  property: string;
+  status: "open" | "in_progress" | "resolved";
+  priority: "low" | "medium" | "high" | "urgent";
+  category: string;
+  createdAt: string;
+  updatedAt: string;
+  photos: string[];
+}
+
+interface TimelineItem {
+  id: string;
+  type: "created" | "status" | "comment";
+  message: string;
+  user: string;
+  timestamp: string;
+}
 
 const statusConfig = {
   open: { label: "Open", color: "bg-orange-100 text-orange-700", icon: AlertCircle },
@@ -103,22 +74,142 @@ export default function IssueDetailPage() {
 }
 
 function IssueDetailContent() {
+  const params = useParams();
+  const issueId = params.id as string;
+  const { userId, fullName } = useRole();
+  
+  const [issue, setIssue] = useState<IssueDetail | null>(null);
+  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [currentPhoto, setCurrentPhoto] = useState(0);
   const [isSending, setIsSending] = useState(false);
 
-  const issue = mockIssue;
-  const StatusIcon = statusConfig[issue.status].icon;
+  useEffect(() => {
+    if (!issueId) return;
+
+    async function fetchIssue() {
+      const supabase = createClient();
+      try {
+        // Fetch the issue with property data
+        const { data: issueData, error: issueError } = await supabase
+          .from("issues")
+          .select(`
+            *,
+            properties (
+              id, address_line_1, address_line_2, city
+            )
+          `)
+          .eq("id", issueId)
+          .single();
+
+        if (issueError) throw issueError;
+
+        const prop = issueData.properties;
+        const propertyAddress = prop
+          ? [prop.address_line_1, prop.address_line_2, prop.city].filter(Boolean).join(", ")
+          : "Unknown property";
+
+        setIssue({
+          id: issueData.id,
+          title: issueData.title || "Untitled Issue",
+          description: issueData.description || "",
+          property: propertyAddress,
+          status: issueData.status || "open",
+          priority: issueData.priority || "medium",
+          category: issueData.category || "General",
+          createdAt: issueData.created_at || "",
+          updatedAt: issueData.updated_at || issueData.created_at || "",
+          photos: issueData.photos || [],
+        });
+
+        // Fetch comments for this issue
+        const { data: comments, error: commentsError } = await supabase
+          .from("issue_comments")
+          .select(`
+            *,
+            profiles (
+              full_name
+            )
+          `)
+          .eq("issue_id", issueId)
+          .order("created_at", { ascending: true });
+
+        if (commentsError) throw commentsError;
+
+        // Build timeline: start with issue creation, then add comments
+        const timelineItems: TimelineItem[] = [
+          {
+            id: "created",
+            type: "created",
+            message: "Issue reported",
+            user: issueData.reported_by === userId ? "You" : "Reporter",
+            timestamp: issueData.created_at,
+          },
+        ];
+
+        (comments || []).forEach((comment: any) => {
+          timelineItems.push({
+            id: comment.id,
+            type: comment.type === "status_change" ? "status" : "comment",
+            message: comment.content || comment.message || "",
+            user: comment.user_id === userId ? "You" : (comment.profiles?.full_name || "User"),
+            timestamp: comment.created_at,
+          });
+        });
+
+        setTimeline(timelineItems);
+      } catch (err) {
+        console.error("Error fetching issue:", err);
+        toast.error("Failed to load issue details");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchIssue();
+  }, [issueId, userId]);
 
   const handleSendComment = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !issue) return;
     setIsSending(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setIsSending(false);
-    setNewComment("");
+    
+    const supabase = createClient();
+    try {
+      const { data, error } = await supabase
+        .from("issue_comments")
+        .insert({
+          issue_id: issue.id,
+          user_id: userId,
+          content: newComment.trim(),
+          type: "comment",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add to timeline
+      setTimeline(prev => [...prev, {
+        id: data.id,
+        type: "comment",
+        message: newComment.trim(),
+        user: "You",
+        timestamp: data.created_at,
+      }]);
+
+      setNewComment("");
+      toast.success("Comment added");
+    } catch (err) {
+      console.error("Error sending comment:", err);
+      toast.error("Failed to send comment");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "";
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
@@ -126,6 +217,33 @@ function IssueDetailContent() {
       minute: "2-digit",
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
+          <div className="h-10 w-48 bg-slate-200 rounded animate-pulse" />
+          <div className="h-64 bg-slate-100 rounded-2xl animate-pulse" />
+          <div className="h-48 bg-slate-100 rounded-2xl animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!issue) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-slate-500 mb-4">Issue not found</p>
+          <Link href="/issues">
+            <Button>Back to Issues</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const StatusIcon = statusConfig[issue.status]?.icon || AlertCircle;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -155,9 +273,9 @@ function IssueDetailContent() {
                 {issue.property}
               </div>
             </div>
-            <Badge className={statusConfig[issue.status].color}>
+            <Badge className={statusConfig[issue.status]?.color || "bg-slate-100 text-slate-600"}>
               <StatusIcon className="w-3 h-3 mr-1" />
-              {statusConfig[issue.status].label}
+              {statusConfig[issue.status]?.label || issue.status}
             </Badge>
           </div>
         </div>
@@ -206,7 +324,7 @@ function IssueDetailContent() {
                         <ChevronRight className="w-5 h-5" />
                       </motion.button>
                       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-                        {issue.photos.map((_, i) => (
+                        {issue.photos.map((_: string, i: number) => (
                           <motion.button
                             key={i}
                             onClick={() => setCurrentPhoto(i)}
@@ -239,7 +357,7 @@ function IssueDetailContent() {
                         {formatDate(issue.createdAt)}
                       </span>
                       <Badge variant="outline">{issue.category}</Badge>
-                      <Badge className={priorityConfig[issue.priority].color}>
+                      <Badge className={priorityConfig[issue.priority]?.color || "bg-slate-100 text-slate-600"}>
                         {issue.priority}
                       </Badge>
                     </div>
@@ -263,7 +381,7 @@ function IssueDetailContent() {
 
                 <div className="space-y-4">
                   <AnimatePresence>
-                    {issue.timeline.map((item, index) => (
+                    {timeline.map((item, index) => (
                       <motion.div
                         key={item.id}
                         initial={{ opacity: 0, x: -20 }}
@@ -279,7 +397,7 @@ function IssueDetailContent() {
                           }`}>
                             <User className="w-4 h-4" />
                           </div>
-                          {index < issue.timeline.length - 1 && (
+                          {index < timeline.length - 1 && (
                             <div className="w-0.5 flex-1 bg-slate-200 my-2" />
                           )}
                         </div>

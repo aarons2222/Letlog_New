@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,9 +20,12 @@ import {
   ChevronRight, AlertTriangle, Plus
 } from "lucide-react";
 import { RoleGuard } from "@/components/RoleGuard";
+import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
+import { toast } from "sonner";
 
 // Trade categories
-const tradeCategories = {
+const tradeCategories: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   plumbing: { label: "Plumbing", icon: Droplets, color: "blue" },
   electrical: { label: "Electrical", icon: Zap, color: "yellow" },
   heating: { label: "Heating/Gas", icon: Wind, color: "orange" },
@@ -30,69 +33,21 @@ const tradeCategories = {
   general: { label: "General Repairs", icon: Wrench, color: "slate" },
 };
 
-// Mock tenders
-const mockTenders = [
-  {
-    id: "1",
-    title: "Boiler repair - E119 error",
-    description: "Need a Gas Safe engineer to diagnose and repair boiler showing E119 error. No hot water for 2 days.",
-    property_address: "42 Oak Lane, Flat 2, Lincoln",
-    trade_required: "heating",
-    budget_min: 100,
-    budget_max: 300,
-    deadline: "2026-01-30",
-    status: "open",
-    quotes_count: 3,
-    posted_date: "2026-01-27",
-    landlord_name: "John Smith",
-    urgency: "high",
-  },
-  {
-    id: "2",
-    title: "Replace bathroom extractor fan",
-    description: "Extractor fan in main bathroom has stopped working. Need replacement and installation.",
-    property_address: "15 High Street, Lincoln",
-    trade_required: "electrical",
-    budget_min: 80,
-    budget_max: 150,
-    deadline: "2026-02-05",
-    status: "open",
-    quotes_count: 1,
-    posted_date: "2026-01-26",
-    landlord_name: "Jane Doe",
-    urgency: "medium",
-  },
-  {
-    id: "3",
-    title: "Fix leaking kitchen tap",
-    description: "Kitchen mixer tap is dripping constantly. May need washer replacement or new tap.",
-    property_address: "8 Mill Road, Lincoln",
-    trade_required: "plumbing",
-    budget_min: 40,
-    budget_max: 100,
-    deadline: "2026-02-10",
-    status: "open",
-    quotes_count: 0,
-    posted_date: "2026-01-28",
-    landlord_name: "Bob Wilson",
-    urgency: "low",
-  },
-  {
-    id: "4",
-    title: "Annual gas safety check",
-    description: "Routine annual gas safety inspection required for rental property. 2-bed flat with combi boiler.",
-    property_address: "22 Church Lane, Lincoln",
-    trade_required: "heating",
-    budget_min: 60,
-    budget_max: 90,
-    deadline: "2026-02-15",
-    status: "open",
-    quotes_count: 5,
-    posted_date: "2026-01-25",
-    landlord_name: "Sarah Brown",
-    urgency: "low",
-  },
-];
+interface Tender {
+  id: string;
+  title: string;
+  description: string;
+  property_address: string;
+  trade_required: string;
+  budget_min: number;
+  budget_max: number;
+  deadline: string;
+  status: string;
+  quotes_count: number;
+  posted_date: string;
+  landlord_name: string;
+  urgency: string;
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -116,10 +71,86 @@ export default function TendersPage() {
 }
 
 function TendersContent() {
-  const [tenders, setTenders] = useState(mockTenders);
+  const { userId, role } = useRole();
+  const [tenders, setTenders] = useState<Tender[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTrade, setFilterTrade] = useState<string | null>(null);
   const [filterUrgency, setFilterUrgency] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    async function fetchTenders() {
+      const supabase = createClient();
+      try {
+        let query = supabase
+          .from("tenders")
+          .select(`
+            *,
+            properties (
+              id, address_line_1, address_line_2, city, postcode
+            ),
+            profiles!tenders_landlord_id_fkey (
+              full_name
+            )
+          `)
+          .order("created_at", { ascending: false });
+
+        // Contractors see only open tenders, landlords see their own
+        if (role === "contractor") {
+          query = query.eq("status", "open");
+        } else if (role === "landlord") {
+          query = query.eq("landlord_id", userId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        // For each tender, count quotes
+        const enriched: Tender[] = await Promise.all(
+          (data || []).map(async (t: any) => {
+            const { count: quotesCount } = await supabase
+              .from("quotes")
+              .select("*", { count: "exact", head: true })
+              .eq("tender_id", t.id);
+
+            const prop = t.properties;
+            const address = prop
+              ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+                  .filter(Boolean)
+                  .join(", ")
+              : "Unknown property";
+
+            return {
+              id: t.id,
+              title: t.title || "Untitled Job",
+              description: t.description || "",
+              property_address: address,
+              trade_required: t.trade_required || "general",
+              budget_min: t.budget_min || 0,
+              budget_max: t.budget_max || 0,
+              deadline: t.deadline || "",
+              status: t.status || "open",
+              quotes_count: quotesCount || 0,
+              posted_date: t.created_at ? new Date(t.created_at).toISOString().split("T")[0] : "",
+              landlord_name: t.profiles?.full_name || "Unknown",
+              urgency: t.urgency || "medium",
+            };
+          })
+        );
+
+        setTenders(enriched);
+      } catch (err) {
+        console.error("Error fetching tenders:", err);
+        toast.error("Failed to load jobs");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchTenders();
+  }, [userId, role]);
 
   const filteredTenders = tenders.filter(t => {
     const matchesSearch = 
@@ -139,6 +170,25 @@ function TendersContent() {
     plumbing: tenders.filter(t => t.trade_required === "plumbing").length,
     electrical: tenders.filter(t => t.trade_required === "electrical").length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-24 bg-slate-100 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-32 bg-slate-100 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -280,17 +330,17 @@ function TendersContent() {
   );
 }
 
-function TenderCard({ tender }: { tender: typeof mockTenders[0] }) {
-  const trade = tradeCategories[tender.trade_required as keyof typeof tradeCategories];
+function TenderCard({ tender }: { tender: Tender }) {
+  const trade = tradeCategories[tender.trade_required];
   const Icon = trade?.icon || Wrench;
 
-  const urgencyConfig = {
+  const urgencyConfig: Record<string, { label: string; color: string }> = {
     high: { label: "Urgent", color: "bg-red-100 text-red-700" },
     medium: { label: "Medium", color: "bg-amber-100 text-amber-700" },
     low: { label: "Low", color: "bg-green-100 text-green-700" },
   };
 
-  const urgency = urgencyConfig[tender.urgency as keyof typeof urgencyConfig];
+  const urgency = urgencyConfig[tender.urgency] || urgencyConfig.medium;
 
   // Calculate days until deadline
   const deadline = new Date(tender.deadline);
@@ -333,9 +383,9 @@ function TenderCard({ tender }: { tender: typeof mockTenders[0] }) {
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <Badge className={urgency?.color}>
+                    <Badge className={urgency.color}>
                       {tender.urgency === "high" && <AlertTriangle className="w-3 h-3 mr-1" />}
-                      {urgency?.label}
+                      {urgency.label}
                     </Badge>
                     <span className="text-xs text-slate-400">{tender.quotes_count} quotes</span>
                   </div>

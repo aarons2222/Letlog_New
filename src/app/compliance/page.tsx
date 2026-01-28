@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RoleGuard } from "@/components/RoleGuard";
@@ -20,6 +20,9 @@ import {
   Clock, Upload, FileText, Home, Calendar, Filter, Plus,
   Flame, Zap, Bug, FileCheck
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
+import { toast } from "sonner";
 
 // Compliance types with UK requirements
 const complianceTypes = {
@@ -60,69 +63,18 @@ const complianceTypes = {
   },
 };
 
-// Mock data
-const mockCompliance = [
-  {
-    id: "1",
-    property_id: "1",
-    property_address: "42 Oak Lane, Flat 2",
-    compliance_type: "gas_safety",
-    issue_date: "2025-08-15",
-    expiry_date: "2026-08-14",
-    status: "valid",
-    certificate_number: "GS-2025-12345",
-    inspector_name: "British Gas",
-    document_url: null,
-  },
-  {
-    id: "2",
-    property_id: "1",
-    property_address: "42 Oak Lane, Flat 2",
-    compliance_type: "eicr",
-    issue_date: "2024-03-01",
-    expiry_date: "2029-02-28",
-    status: "valid",
-    certificate_number: "EICR-2024-67890",
-    inspector_name: "Sparks Electrical",
-    document_url: null,
-  },
-  {
-    id: "3",
-    property_id: "2",
-    property_address: "15 High Street",
-    compliance_type: "gas_safety",
-    issue_date: "2025-01-10",
-    expiry_date: "2026-01-09",
-    status: "expiring_soon",
-    certificate_number: "GS-2025-54321",
-    inspector_name: "Local Gas Services",
-    document_url: null,
-  },
-  {
-    id: "4",
-    property_id: "2",
-    property_address: "15 High Street",
-    compliance_type: "epc",
-    issue_date: "2020-06-15",
-    expiry_date: "2030-06-14",
-    status: "valid",
-    certificate_number: "EPC-0012-3456-7890",
-    inspector_name: "Energy Assessors Ltd",
-    document_url: null,
-  },
-  {
-    id: "5",
-    property_id: "3",
-    property_address: "8 Mill Road",
-    compliance_type: "eicr",
-    issue_date: "2021-11-20",
-    expiry_date: "2026-11-19",
-    status: "valid",
-    certificate_number: "EICR-2021-11111",
-    inspector_name: "Safe Electrics",
-    document_url: null,
-  },
-];
+interface ComplianceRecord {
+  id: string;
+  property_id: string;
+  property_address: string;
+  compliance_type: string;
+  issue_date: string;
+  expiry_date: string;
+  status: string;
+  certificate_number: string;
+  inspector_name: string;
+  document_url: string | null;
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -146,10 +98,84 @@ export default function CompliancePage() {
 }
 
 function ComplianceContent() {
-  const [records, setRecords] = useState(mockCompliance);
+  const { userId } = useRole();
+  const [records, setRecords] = useState<ComplianceRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    async function fetchCompliance() {
+      const supabase = createClient();
+      try {
+        const { data, error } = await supabase
+          .from("compliance_records")
+          .select(`
+            *,
+            properties (
+              id, address_line_1, address_line_2, city, postcode, landlord_id
+            )
+          `)
+          .order("expiry_date", { ascending: true });
+
+        if (error) throw error;
+
+        // Filter to landlord's properties and compute status
+        const now = new Date();
+        const thirtyDays = new Date();
+        thirtyDays.setDate(thirtyDays.getDate() + 30);
+
+        const mapped: ComplianceRecord[] = (data || [])
+          .filter((r: any) => r.properties?.landlord_id === userId)
+          .map((r: any) => {
+            const prop = r.properties;
+            const address = prop
+              ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+                  .filter(Boolean)
+                  .join(", ")
+              : "Unknown property";
+
+            // Compute status from expiry date
+            let status = r.status || "valid";
+            if (r.expiry_date) {
+              const expiry = new Date(r.expiry_date);
+              if (expiry < now) {
+                status = "expired";
+              } else if (expiry <= thirtyDays) {
+                status = "expiring_soon";
+              } else {
+                status = "valid";
+              }
+            }
+
+            return {
+              id: r.id,
+              property_id: r.property_id || "",
+              property_address: address,
+              compliance_type: r.compliance_type || r.type || "gas_safety",
+              issue_date: r.issue_date || r.issued_date || "",
+              expiry_date: r.expiry_date || "",
+              status,
+              certificate_number: r.certificate_number || r.reference || "",
+              inspector_name: r.inspector_name || r.provider || "",
+              document_url: r.document_url || null,
+            };
+          });
+
+        setRecords(mapped);
+      } catch (err) {
+        console.error("Error fetching compliance records:", err);
+        toast.error("Failed to load compliance records");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchCompliance();
+  }, [userId]);
 
   const filteredRecords = records.filter(r => {
     const matchesSearch = 
@@ -174,6 +200,25 @@ function ComplianceContent() {
   const expiringSoon = filteredRecords.filter(r => r.status === "expiring_soon");
   const expired = filteredRecords.filter(r => r.status === "expired");
   const valid = filteredRecords.filter(r => r.status === "valid");
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-24 bg-slate-100 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-32 bg-slate-100 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -390,7 +435,7 @@ function ComplianceContent() {
   );
 }
 
-function ComplianceCard({ record }: { record: typeof mockCompliance[0] }) {
+function ComplianceCard({ record }: { record: ComplianceRecord }) {
   const typeInfo = complianceTypes[record.compliance_type as keyof typeof complianceTypes];
   const Icon = typeInfo?.icon || FileText;
 
@@ -459,9 +504,11 @@ function ComplianceCard({ record }: { record: typeof mockCompliance[0] }) {
                     : `${Math.abs(daysUntilExpiry)} days overdue`
                   }
                 </span>
-                <span className="text-slate-400">
-                  #{record.certificate_number}
-                </span>
+                {record.certificate_number && (
+                  <span className="text-slate-400">
+                    #{record.certificate_number}
+                  </span>
+                )}
               </div>
             </div>
 

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { RoleGuard } from "@/components/RoleGuard";
+import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
 import { 
   ChevronLeft, ChevronRight, Home, Calendar as CalendarIcon,
   AlertTriangle, Key, Wrench, FileText, ArrowLeft, GripVertical
@@ -34,19 +36,11 @@ interface CalendarEvent {
   type: EventType;
   property?: string;
   urgent?: boolean;
+  // Source info for DB persistence
+  sourceTable?: string;
+  sourceId?: string;
+  sourceField?: string;
 }
-
-// Mock events - will be replaced with real Supabase data
-const initialEvents: CalendarEvent[] = [
-  { id: "1", date: new Date(2026, 0, 15), title: "Gas Safety Certificate expires", type: "compliance", property: "15 High St", urgent: true },
-  { id: "2", date: new Date(2026, 0, 28), title: "Rent due", type: "rent_due", property: "42 Oak Lane" },
-  { id: "3", date: new Date(2026, 1, 1), title: "Tenancy starts", type: "tenancy_start", property: "8 Mill Road" },
-  { id: "4", date: new Date(2026, 1, 14), title: "EICR due", type: "compliance", property: "42 Oak Lane" },
-  { id: "5", date: new Date(2026, 1, 28), title: "Rent due", type: "rent_due", property: "42 Oak Lane" },
-  { id: "6", date: new Date(2026, 2, 15), title: "Boiler service scheduled", type: "maintenance", property: "15 High St" },
-  { id: "7", date: new Date(2026, 4, 31), title: "Tenancy ends", type: "tenancy_end", property: "42 Oak Lane" },
-  { id: "8", date: new Date(2026, 5, 1), title: "Tenancy renewal", type: "tenancy_start", property: "42 Oak Lane" },
-];
 
 const eventConfig: Record<EventType, { color: string; bgColor: string; icon: React.ElementType; dotColor: string }> = {
   tenancy_start: { color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30", icon: Key, dotColor: "bg-green-500" },
@@ -199,13 +193,202 @@ export default function CalendarPage() {
 }
 
 function CalendarContent() {
-  const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
+  const { userId } = useRole();
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+
+  // Fetch events from real data
+  useEffect(() => {
+    if (!userId) return;
+
+    async function fetchCalendarEvents() {
+      const supabase = createClient();
+      const calEvents: CalendarEvent[] = [];
+
+      try {
+        // 1. Tenancy start/end dates
+        const { data: tenancies } = await supabase
+          .from("tenancies")
+          .select(`
+            id, start_date, end_date, status, rent_amount,
+            properties (
+              id, address_line_1, city, landlord_id
+            )
+          `)
+          .order("start_date", { ascending: true });
+
+        if (tenancies) {
+          tenancies
+            .filter((t: any) => t.properties?.landlord_id === userId)
+            .forEach((t: any) => {
+              const prop = t.properties;
+              const propName = prop
+                ? [prop.address_line_1, prop.city].filter(Boolean).join(", ")
+                : "Unknown";
+
+              if (t.start_date) {
+                calEvents.push({
+                  id: `tenancy-start-${t.id}`,
+                  date: new Date(t.start_date),
+                  title: "Tenancy starts",
+                  type: "tenancy_start",
+                  property: propName,
+                  sourceTable: "tenancies",
+                  sourceId: t.id,
+                  sourceField: "start_date",
+                });
+              }
+
+              if (t.end_date) {
+                const endDate = new Date(t.end_date);
+                const now = new Date();
+                const daysUntil = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+                calEvents.push({
+                  id: `tenancy-end-${t.id}`,
+                  date: endDate,
+                  title: "Tenancy ends",
+                  type: "tenancy_end",
+                  property: propName,
+                  urgent: daysUntil <= 30 && daysUntil > 0,
+                  sourceTable: "tenancies",
+                  sourceId: t.id,
+                  sourceField: "end_date",
+                });
+              }
+
+              // Generate monthly rent due events for active tenancies
+              if (t.status === "active" && t.start_date) {
+                const start = new Date(t.start_date);
+                const end = t.end_date ? new Date(t.end_date) : new Date(new Date().getFullYear(), 11, 31);
+                const rentDay = start.getDate();
+                
+                // Generate for a window: 3 months back to 6 months forward
+                const windowStart = new Date();
+                windowStart.setMonth(windowStart.getMonth() - 3);
+                const windowEnd = new Date();
+                windowEnd.setMonth(windowEnd.getMonth() + 6);
+
+                const current = new Date(Math.max(start.getTime(), windowStart.getTime()));
+                current.setDate(rentDay);
+                if (current < windowStart) current.setMonth(current.getMonth() + 1);
+
+                while (current <= end && current <= windowEnd) {
+                  calEvents.push({
+                    id: `rent-${t.id}-${current.getFullYear()}-${current.getMonth()}`,
+                    date: new Date(current),
+                    title: `Rent due (£${t.rent_amount || 0})`,
+                    type: "rent_due",
+                    property: propName,
+                  });
+                  current.setMonth(current.getMonth() + 1);
+                }
+              }
+            });
+        }
+
+        // 2. Compliance record expiry dates
+        const { data: compliance } = await supabase
+          .from("compliance_records")
+          .select(`
+            id, compliance_type, type, expiry_date, status,
+            properties (
+              id, address_line_1, city, landlord_id
+            )
+          `)
+          .order("expiry_date", { ascending: true });
+
+        if (compliance) {
+          const complianceLabels: Record<string, string> = {
+            gas_safety: "Gas Safety Certificate expires",
+            eicr: "EICR due",
+            epc: "EPC Certificate expires",
+            legionella: "Legionella assessment due",
+            smoke_co: "Smoke & CO alarm check due",
+          };
+
+          compliance
+            .filter((c: any) => c.properties?.landlord_id === userId)
+            .forEach((c: any) => {
+              if (!c.expiry_date) return;
+              const prop = c.properties;
+              const propName = prop
+                ? [prop.address_line_1, prop.city].filter(Boolean).join(", ")
+                : "Unknown";
+              const compType = c.compliance_type || c.type || "gas_safety";
+              const expiry = new Date(c.expiry_date);
+              const now = new Date();
+              const daysUntil = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+              calEvents.push({
+                id: `compliance-${c.id}`,
+                date: expiry,
+                title: complianceLabels[compType] || `${compType} expires`,
+                type: "compliance",
+                property: propName,
+                urgent: daysUntil <= 30,
+                sourceTable: "compliance_records",
+                sourceId: c.id,
+                sourceField: "expiry_date",
+              });
+            });
+        }
+
+        // 3. Open/in-progress issues as maintenance events
+        const { data: issues } = await supabase
+          .from("issues")
+          .select(`
+            id, title, status, priority, created_at, scheduled_date, due_date,
+            properties (
+              id, address_line_1, city, landlord_id
+            )
+          `)
+          .in("status", ["open", "in_progress"])
+          .order("created_at", { ascending: false });
+
+        if (issues) {
+          issues
+            .filter((i: any) => i.properties?.landlord_id === userId)
+            .forEach((i: any) => {
+              const prop = i.properties;
+              const propName = prop
+                ? [prop.address_line_1, prop.city].filter(Boolean).join(", ")
+                : "Unknown";
+              // Use scheduled_date or due_date if available, otherwise created_at
+              const eventDate = i.scheduled_date || i.due_date || i.created_at;
+              if (!eventDate) return;
+
+              calEvents.push({
+                id: `issue-${i.id}`,
+                date: new Date(eventDate),
+                title: i.title || "Maintenance issue",
+                type: "maintenance",
+                property: propName,
+                urgent: i.priority === "urgent" || i.priority === "high",
+                sourceTable: "issues",
+                sourceId: i.id,
+                sourceField: i.scheduled_date ? "scheduled_date" : (i.due_date ? "due_date" : "created_at"),
+              });
+            });
+        }
+
+        setEvents(calEvents);
+      } catch (err) {
+        console.error("Error fetching calendar events:", err);
+        toast.error("Failed to load calendar events");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchCalendarEvents();
+  }, [userId]);
 
   // Configure drag sensor with activation constraint
   const sensors = useSensors(
@@ -294,7 +477,7 @@ function CalendarContent() {
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveEvent(null);
 
@@ -306,23 +489,87 @@ function CalendarContent() {
     if (!dropData) return;
 
     const { day, month: dropMonth, year: dropYear } = dropData;
-    
-    // Update the event's date
+    const newDate = new Date(dropYear, dropMonth, day);
+
+    // Find the event
+    const draggedEvent = events.find(e => e.id === eventId);
+    if (!draggedEvent) return;
+
+    // Don't allow rescheduling rent_due events (they're auto-derived)
+    if (draggedEvent.type === "rent_due") {
+      toast.error("Rent due dates are automatically generated from tenancy start dates");
+      return;
+    }
+
+    // Update local state immediately
     setEvents(prevEvents => 
       prevEvents.map(e => {
         if (e.id === eventId) {
-          const newDate = new Date(dropYear, dropMonth, day);
-          toast.success(`Rescheduled "${e.title}" to ${newDate.toLocaleDateString("en-GB", { 
-            weekday: "short", 
-            day: "numeric", 
-            month: "short" 
-          })}`);
           return { ...e, date: newDate };
         }
         return e;
       })
     );
+
+    toast.success(`Rescheduled "${draggedEvent.title}" to ${newDate.toLocaleDateString("en-GB", { 
+      weekday: "short", 
+      day: "numeric", 
+      month: "short" 
+    })}`);
+
+    // Persist to database if source info is available
+    if (draggedEvent.sourceTable && draggedEvent.sourceId && draggedEvent.sourceField) {
+      const supabase = createClient();
+      try {
+        const { error } = await supabase
+          .from(draggedEvent.sourceTable)
+          .update({ [draggedEvent.sourceField]: newDate.toISOString().split("T")[0] })
+          .eq("id", draggedEvent.sourceId);
+
+        if (error) {
+          console.error("Error persisting date change:", error);
+          toast.error("Failed to save date change to database");
+          // Revert on failure
+          setEvents(prevEvents =>
+            prevEvents.map(e => {
+              if (e.id === eventId) {
+                return { ...e, date: draggedEvent.date };
+              }
+              return e;
+            })
+          );
+        }
+      } catch (err) {
+        console.error("Error persisting date change:", err);
+        toast.error("Failed to save date change to database");
+        // Revert on failure
+        setEvents(prevEvents =>
+          prevEvents.map(e => {
+            if (e.id === eventId) {
+              return { ...e, date: draggedEvent.date };
+            }
+            return e;
+          })
+        );
+      }
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-[500px] bg-slate-100 rounded-2xl animate-pulse" />
+            <div className="space-y-4">
+              <div className="h-48 bg-slate-100 rounded-2xl animate-pulse" />
+              <div className="h-64 bg-slate-100 rounded-2xl animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">

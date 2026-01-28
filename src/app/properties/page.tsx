@@ -18,53 +18,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RoleGuard } from "@/components/RoleGuard";
+import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
+import { toast } from "sonner";
 
-// Mock data - will be replaced with Supabase
-const mockProperties = [
-  {
-    id: "1",
-    address_line_1: "42 Oak Lane",
-    address_line_2: "Flat 2",
-    city: "Lincoln",
-    postcode: "LN1 3BT",
-    property_type: "flat",
-    bedrooms: 2,
-    bathrooms: 1,
-    status: "occupied",
-    tenant_count: 1,
-    compliance_status: "valid",
-    rent_amount: 850,
-    image: null,
-  },
-  {
-    id: "2",
-    address_line_1: "15 High Street",
-    city: "Lincoln",
-    postcode: "LN2 1HN",
-    property_type: "house",
-    bedrooms: 3,
-    bathrooms: 2,
-    status: "occupied",
-    tenant_count: 2,
-    compliance_status: "expiring",
-    rent_amount: 1200,
-    image: null,
-  },
-  {
-    id: "3",
-    address_line_1: "8 Mill Road",
-    city: "Lincoln",
-    postcode: "LN3 4JP",
-    property_type: "house",
-    bedrooms: 4,
-    bathrooms: 2,
-    status: "vacant",
-    tenant_count: 0,
-    compliance_status: "valid",
-    rent_amount: 1450,
-    image: null,
-  },
-];
+interface Property {
+  id: string;
+  address_line_1: string;
+  address_line_2: string | null;
+  city: string;
+  postcode: string;
+  property_type: string;
+  bedrooms: number;
+  bathrooms: number;
+  status: string;
+  tenant_count: number;
+  compliance_status: string;
+  rent_amount: number;
+  image: string | null;
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -88,9 +60,90 @@ export default function PropertiesPage() {
 }
 
 function PropertiesContent() {
-  const [properties, setProperties] = useState(mockProperties);
+  const { userId } = useRole();
+  const [properties, setProperties] = useState<Property[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    async function fetchProperties() {
+      const supabase = createClient();
+      try {
+        // Fetch properties owned by this landlord
+        const { data: rawProperties, error } = await supabase
+          .from("properties")
+          .select("*")
+          .eq("landlord_id", userId)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        // For each property, get tenant count and compliance status
+        const enriched: Property[] = await Promise.all(
+          (rawProperties || []).map(async (p: any) => {
+            // Count active tenants via tenancies
+            const { count: tenantCount } = await supabase
+              .from("tenancies")
+              .select("*", { count: "exact", head: true })
+              .eq("property_id", p.id)
+              .eq("status", "active");
+
+            // Check compliance: any expiring within 30 days?
+            const thirtyDays = new Date();
+            thirtyDays.setDate(thirtyDays.getDate() + 30);
+
+            const { data: complianceData } = await supabase
+              .from("compliance_records")
+              .select("expiry_date, status")
+              .eq("property_id", p.id);
+
+            let complianceStatus = "valid";
+            if (complianceData) {
+              const hasExpired = complianceData.some(
+                (c: any) => c.status === "expired" || new Date(c.expiry_date) < new Date()
+              );
+              const hasExpiring = complianceData.some(
+                (c: any) => {
+                  const expiry = new Date(c.expiry_date);
+                  return expiry >= new Date() && expiry <= thirtyDays;
+                }
+              );
+              if (hasExpired) complianceStatus = "expired";
+              else if (hasExpiring) complianceStatus = "expiring";
+            }
+
+            return {
+              id: p.id,
+              address_line_1: p.address_line_1 || p.address || "",
+              address_line_2: p.address_line_2 || null,
+              city: p.city || "",
+              postcode: p.postcode || "",
+              property_type: p.property_type || "house",
+              bedrooms: p.bedrooms || 0,
+              bathrooms: p.bathrooms || 0,
+              status: (tenantCount && tenantCount > 0) ? "occupied" : "vacant",
+              tenant_count: tenantCount || 0,
+              compliance_status: complianceStatus,
+              rent_amount: p.rent_amount || 0,
+              image: p.image || null,
+            };
+          })
+        );
+
+        setProperties(enriched);
+      } catch (err) {
+        console.error("Error fetching properties:", err);
+        toast.error("Failed to load properties");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchProperties();
+  }, [userId]);
 
   const filteredProperties = properties.filter(p => {
     const matchesSearch = 
@@ -107,8 +160,27 @@ function PropertiesContent() {
     total: properties.length,
     occupied: properties.filter(p => p.status === "occupied").length,
     vacant: properties.filter(p => p.status === "vacant").length,
-    expiring: properties.filter(p => p.compliance_status === "expiring").length,
+    expiring: properties.filter(p => p.compliance_status === "expiring" || p.compliance_status === "expired").length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-24 bg-slate-100 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-32 bg-slate-100 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -249,7 +321,7 @@ function PropertiesContent() {
   );
 }
 
-function PropertyCard({ property }: { property: typeof mockProperties[0] }) {
+function PropertyCard({ property }: { property: Property }) {
   const statusConfig = {
     occupied: { label: "Occupied", color: "bg-green-100 text-green-700" },
     vacant: { label: "Vacant", color: "bg-orange-100 text-orange-700" },
@@ -261,8 +333,8 @@ function PropertyCard({ property }: { property: typeof mockProperties[0] }) {
     expired: { label: "Expired", color: "bg-red-100 text-red-700" },
   };
 
-  const status = statusConfig[property.status as keyof typeof statusConfig];
-  const compliance = complianceConfig[property.compliance_status as keyof typeof complianceConfig];
+  const status = statusConfig[property.status as keyof typeof statusConfig] || statusConfig.vacant;
+  const compliance = complianceConfig[property.compliance_status as keyof typeof complianceConfig] || complianceConfig.valid;
 
   return (
     <motion.div
