@@ -77,33 +77,14 @@ export default function AppShell({ children, activeNav }: { children: React.Reac
         >
           <nav className="flex-1 space-y-1 p-2 mt-2">
             <NavLink href="/dashboard" icon={Home} label="Dashboard" active={activeNav === "dashboard"} collapsed={!expanded} />
-
-            {role === "landlord" && (
-              <>
-                <NavLink href="/properties" icon={Building2} label="Properties" active={activeNav === "properties"} collapsed={!expanded} />
-                <NavLink href="/tenancies" icon={Users} label="Tenancies" active={activeNav === "tenancies"} collapsed={!expanded} />
-                <NavLink href="/issues" icon={Wrench} label="Maintenance" active={activeNav === "issues"} collapsed={!expanded} />
-                <NavLink href="/tenders" icon={Briefcase} label="Jobs" active={activeNav === "tenders"} collapsed={!expanded} />
-                <NavLink href="/compliance" icon={AlertTriangle} label="Compliance" active={activeNav === "compliance"} collapsed={!expanded} />
-                <NavLink href="/calendar" icon={Calendar} label="Calendar" active={activeNav === "calendar"} collapsed={!expanded} />
-                <NavLink href="/reviews" icon={Star} label="Reviews" active={activeNav === "reviews"} collapsed={!expanded} />
-              </>
-            )}
-
-            {role === "tenant" && (
-              <>
-                <NavLink href="/issues" icon={Wrench} label="Maintenance" active={activeNav === "issues"} collapsed={!expanded} />
-                <NavLink href="/reviews" icon={Star} label="Reviews" active={activeNav === "reviews"} collapsed={!expanded} />
-              </>
-            )}
-
-            {role === "contractor" && (
-              <>
-                <NavLink href="/tenders" icon={Briefcase} label="Browse Jobs" active={activeNav === "tenders"} collapsed={!expanded} />
-                <NavLink href="/quotes" icon={Receipt} label="My Quotes" active={activeNav === "quotes"} collapsed={!expanded} />
-                <NavLink href="/reviews" icon={Star} label="Reviews" active={activeNav === "reviews"} collapsed={!expanded} />
-              </>
-            )}
+            <NavLink href="/properties" icon={Building2} label="Properties" active={activeNav === "properties"} collapsed={!expanded} />
+            <NavLink href="/tenancies" icon={Users} label="Tenancies" active={activeNav === "tenancies"} collapsed={!expanded} />
+            <NavLink href="/issues" icon={Wrench} label="Maintenance" active={activeNav === "issues"} collapsed={!expanded} />
+            <NavLink href="/tenders" icon={Briefcase} label="Jobs" active={activeNav === "tenders"} collapsed={!expanded} />
+            <NavLink href="/compliance" icon={AlertTriangle} label="Compliance" active={activeNav === "compliance"} collapsed={!expanded} />
+            <NavLink href="/calendar" icon={Calendar} label="Calendar" active={activeNav === "calendar"} collapsed={!expanded} />
+            <NavLink href="/quotes" icon={Receipt} label="Quotes" active={activeNav === "quotes"} collapsed={!expanded} />
+            <NavLink href="/reviews" icon={Star} label="Reviews" active={activeNav === "reviews"} collapsed={!expanded} />
 
             <div className="pt-4 border-t border-slate-200 mt-4">
               <NavLink href="/settings" icon={Settings} label="Settings" active={activeNav === "settings"} collapsed={!expanded} />
