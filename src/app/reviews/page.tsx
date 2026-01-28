@@ -29,7 +29,6 @@ import {
   PenLine,
   ShieldAlert
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 
 type Role = "landlord" | "tenant" | "contractor";

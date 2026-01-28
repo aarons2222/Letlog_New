@@ -25,7 +25,6 @@ import {
   useDraggable,
 } from "@dnd-kit/core";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
 
 // Types for calendar events
 type EventType = "tenancy_start" | "tenancy_end" | "compliance" | "rent_due" | "maintenance";
@@ -188,6 +187,7 @@ function DroppableDay({
 }
 
 export default function CalendarPage() {
+  const { userId } = useRole();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);

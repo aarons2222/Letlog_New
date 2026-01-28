@@ -93,7 +93,20 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 export function useRole(): RoleContextValue {
   const context = useContext(RoleContext);
   if (context === undefined) {
-    throw new Error("useRole must be used within a RoleProvider");
+    // Return defaults when no provider (e.g., during pre-rendering)
+    return {
+      role: null,
+      isLoading: true,
+      userId: null,
+      fullName: null,
+      email: null,
+      canAccess: () => false,
+      isLandlord: () => false,
+      isTenant: () => false,
+      isContractor: () => false,
+      roleLabel: "",
+      roleBadgeColor: "",
+    };
   }
   return context;
 }

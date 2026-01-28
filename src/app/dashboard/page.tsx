@@ -201,7 +201,7 @@ export default function DashboardPage() {
           openIssues: issueCount || 0,
           pendingQuotes: quoteCount || 0,
           complianceAlerts: complianceCount || 0,
-        });
+        }));
       } else if (userRole === 'tenant') {
         // #2: Tenant stats — NO rent references. Only show maintenance issues.
         const { count: issueCount } = await supabase

@@ -375,8 +375,7 @@ export default function TenanciesPage() {
                             <span className="text-xs text-slate-400 ml-1">(Lead)</span>
                           )}
                         </div>
-                      ))}
-                      {tenancy.tenants.length === 0 && (
+                      )) : (
                         <div className="text-sm text-slate-400">No tenants assigned</div>
                       )}
                     </div>

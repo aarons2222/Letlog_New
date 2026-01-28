@@ -20,6 +20,7 @@ import {
   ChevronRight, AlertTriangle, Plus
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
 import { toast } from "sonner";
 
 // Trade categories
@@ -69,6 +70,7 @@ function computeUrgency(deadline: string | null): string {
 }
 
 export default function TendersPage() {
+  const { userId, role } = useRole();
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTrade, setFilterTrade] = useState<string | null>(null);

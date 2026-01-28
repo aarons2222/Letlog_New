@@ -21,6 +21,7 @@ import {
   XCircle, AlertCircle, MapPin, Calendar, ChevronRight, Briefcase
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
 import { toast } from "sonner";
 
 interface QuoteItem {
@@ -101,6 +102,7 @@ function mapQuoteStatus(dbStatus: string): string {
 }
 
 export default function QuotesPage() {
+  const { userId, role } = useRole();
   const [quotes, setQuotes] = useState<QuoteItem[]>([]);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);

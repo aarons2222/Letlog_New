@@ -21,6 +21,7 @@ import {
   Flame, Zap, Bug, FileCheck
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
 import { toast } from "sonner";
 
 // Compliance types with UK requirements
@@ -89,6 +90,7 @@ const itemVariants = {
 };
 
 export default function CompliancePage() {
+  const { userId, role } = useRole();
   const [records, setRecords] = useState<ComplianceRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
