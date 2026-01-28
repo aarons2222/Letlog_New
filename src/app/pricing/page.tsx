@@ -108,7 +108,7 @@ export default function PricingPage() {
             {plans.map((plan) => (
               <Card 
                 key={plan.id} 
-                className={`rounded-2xl relative ${
+                className={`rounded-2xl relative flex flex-col h-full ${
                   plan.popular 
                     ? 'border-2 border-[#E8998D] shadow-xl' 
                     : 'border border-slate-200'
@@ -126,7 +126,7 @@ export default function PricingPage() {
                   <CardTitle className="text-xl">{plan.name}</CardTitle>
                   <CardDescription>{plan.description}</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-grow">
                   <div className="mb-6">
                     <span className="text-4xl font-bold text-slate-900">{plan.price}</span>
                     <span className="text-slate-600">{plan.period}</span>
@@ -140,7 +140,7 @@ export default function PricingPage() {
                     ))}
                   </ul>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="mt-auto">
                   <Link href={plan.ctaLink} className="w-full">
                     <Button 
                       className={`w-full rounded-xl ${
