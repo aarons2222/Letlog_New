@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RoleGuard } from "@/components/RoleGuard";
 import {
   Dialog,
   DialogContent,
@@ -74,6 +75,14 @@ const mockQuotes = [
 ];
 
 export default function TenderDetailPage({ params }: { params: { id: string } }) {
+  return (
+    <RoleGuard allowedRoles={["landlord", "contractor"]}>
+      <TenderDetailContent params={params} />
+    </RoleGuard>
+  );
+}
+
+function TenderDetailContent({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

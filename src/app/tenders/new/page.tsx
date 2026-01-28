@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RoleGuard } from "@/components/RoleGuard";
 import {
   Select,
   SelectContent,
@@ -57,6 +58,14 @@ const itemVariants = {
 };
 
 export default function NewTenderPage() {
+  return (
+    <RoleGuard allowedRoles={["landlord"]}>
+      <NewTenderContent />
+    </RoleGuard>
+  );
+}
+
+function NewTenderContent() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     property_id: "",

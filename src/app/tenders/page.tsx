@@ -19,6 +19,7 @@ import {
   Wrench, Zap, Droplets, Wind, Home, Filter, Star, Calendar,
   ChevronRight, AlertTriangle, Plus
 } from "lucide-react";
+import { RoleGuard } from "@/components/RoleGuard";
 
 // Trade categories
 const tradeCategories = {
@@ -107,6 +108,14 @@ const itemVariants = {
 };
 
 export default function TendersPage() {
+  return (
+    <RoleGuard allowedRoles={["landlord", "contractor"]}>
+      <TendersContent />
+    </RoleGuard>
+  );
+}
+
+function TendersContent() {
   const [tenders, setTenders] = useState(mockTenders);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTrade, setFilterTrade] = useState<string | null>(null);

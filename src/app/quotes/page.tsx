@@ -10,6 +10,7 @@ import {
   ArrowLeft, FileText, PoundSterling, Clock, CheckCircle, 
   XCircle, AlertCircle, MapPin, Calendar, ChevronRight, Briefcase
 } from "lucide-react";
+import { RoleGuard } from "@/components/RoleGuard";
 
 // Mock quotes
 const mockQuotes = [
@@ -110,6 +111,14 @@ const itemVariants = {
 };
 
 export default function QuotesPage() {
+  return (
+    <RoleGuard allowedRoles={["landlord", "contractor"]}>
+      <QuotesContent />
+    </RoleGuard>
+  );
+}
+
+function QuotesContent() {
   const [quotes, setQuotes] = useState(mockQuotes);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
 

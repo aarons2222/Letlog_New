@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { RoleGuard } from "@/components/RoleGuard";
 import { 
   ChevronLeft, ChevronRight, Home, Calendar as CalendarIcon,
   AlertTriangle, Key, Wrench, FileText, ArrowLeft, GripVertical
@@ -190,6 +191,14 @@ function DroppableDay({
 }
 
 export default function CalendarPage() {
+  return (
+    <RoleGuard allowedRoles={["landlord"]}>
+      <CalendarContent />
+    </RoleGuard>
+  );
+}
+
+function CalendarContent() {
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);

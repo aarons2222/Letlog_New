@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
+import { RoleGuard } from "@/components/RoleGuard";
 import { 
   ArrowLeft, AlertCircle, Clock, CheckCircle2, 
   MessageSquare, Send, Home, Calendar, User,
@@ -94,6 +95,14 @@ const priorityConfig = {
 };
 
 export default function IssueDetailPage() {
+  return (
+    <RoleGuard allowedRoles={["landlord", "tenant"]}>
+      <IssueDetailContent />
+    </RoleGuard>
+  );
+}
+
+function IssueDetailContent() {
   const [newComment, setNewComment] = useState("");
   const [currentPhoto, setCurrentPhoto] = useState(0);
   const [isSending, setIsSending] = useState(false);
