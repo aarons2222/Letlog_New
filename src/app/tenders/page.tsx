@@ -14,13 +14,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
-import { 
-  ArrowLeft, Briefcase, Search, MapPin, Clock, PoundSterling,
-  Wrench, Zap, Droplets, Wind, Home, Filter, Star, Calendar,
-  ChevronRight, AlertTriangle, Plus
+import {
+  ArrowLeft,
+  Briefcase,
+  Search,
+  MapPin,
+  Clock,
+  PoundSterling,
+  Wrench,
+  Zap,
+  Droplets,
+  Wind,
+  Home,
+  Filter,
+  Star,
+  Calendar,
+  ChevronRight,
+  AlertTriangle,
+  Plus,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
+import { containerVariants, itemVariants } from "@/lib/animations";
 import { toast } from "sonner";
 
 // Trade categories
@@ -48,25 +63,12 @@ interface Tender {
   urgency: string;
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
-
 function computeUrgency(deadline: string | null): string {
-  if (!deadline) return 'low';
+  if (!deadline) return "low";
   const daysUntil = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (daysUntil <= 2) return 'high';
-  if (daysUntil <= 7) return 'medium';
-  return 'low';
+  if (daysUntil <= 2) return "high";
+  if (daysUntil <= 7) return "medium";
+  return "low";
 }
 
 export default function TendersPage() {
@@ -82,18 +84,20 @@ export default function TendersPage() {
       const supabase = createClient();
       try {
         const { data, error } = await supabase
-          .from('tenders')
-          .select(`
+          .from("tenders")
+          .select(
+            `
             *,
             properties(address_line_1, address_line_2, city, postcode),
             profiles:landlord_id(full_name),
             quotes(id)
-          `)
-          .order('created_at', { ascending: false });
+          `,
+          )
+          .order("created_at", { ascending: false });
 
         if (error) {
-          console.error('Error fetching tenders:', error);
-          toast.error('Failed to load jobs');
+          console.error("Error fetching tenders:", error);
+          toast.error("Failed to load jobs");
           setIsLoading(false);
           return;
         }
@@ -101,30 +105,32 @@ export default function TendersPage() {
         const mapped: Tender[] = (data || []).map((t: any) => {
           const prop = t.properties;
           const address = prop
-            ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode].filter(Boolean).join(', ')
-            : 'Unknown location';
+            ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+                .filter(Boolean)
+                .join(", ")
+            : "Unknown location";
 
           return {
             id: t.id,
             title: t.title,
-            description: t.description || '',
+            description: t.description || "",
             property_address: address,
-            trade_required: t.trade_category || 'general_maintenance',
+            trade_required: t.trade_category || "general_maintenance",
             budget_min: Number(t.budget_min) || 0,
             budget_max: Number(t.budget_max) || 0,
-            deadline: t.deadline || '',
-            status: t.status || 'open',
+            deadline: t.deadline || "",
+            status: t.status || "open",
             quotes_count: t.quotes?.length || 0,
-            posted_date: t.created_at ? new Date(t.created_at).toISOString().split('T')[0] : '',
-            landlord_name: t.profiles?.full_name || 'Landlord',
+            posted_date: t.created_at ? new Date(t.created_at).toISOString().split("T")[0] : "",
+            landlord_name: t.profiles?.full_name || "Landlord",
             urgency: computeUrgency(t.deadline),
           };
         });
 
         setTenders(mapped);
       } catch (err) {
-        console.error('Error:', err);
-        toast.error('Failed to load jobs');
+        console.error("Error:", err);
+        toast.error("Failed to load jobs");
       } finally {
         setIsLoading(false);
       }
@@ -141,7 +147,8 @@ export default function TendersPage() {
       try {
         let query = supabase
           .from("tenders")
-          .select(`
+          .select(
+            `
             *,
             properties (
               id, address_line_1, address_line_2, city, postcode
@@ -149,7 +156,8 @@ export default function TendersPage() {
             profiles!tenders_landlord_id_fkey (
               full_name
             )
-          `)
+          `,
+          )
           .order("created_at", { ascending: false });
 
         // Contractors see only open tenders, landlords see their own
@@ -192,7 +200,7 @@ export default function TendersPage() {
               landlord_name: t.profiles?.full_name || "Unknown",
               urgency: t.urgency || "medium",
             };
-          })
+          }),
         );
 
         setTenders(enriched);
@@ -207,23 +215,23 @@ export default function TendersPage() {
     fetchTenders();
   }, [userId, role]);
 
-  const filteredTenders = tenders.filter(t => {
-    const matchesSearch = 
+  const filteredTenders = tenders.filter((t) => {
+    const matchesSearch =
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.property_address.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesTrade = !filterTrade || t.trade_required === filterTrade;
     const matchesUrgency = !filterUrgency || t.urgency === filterUrgency;
-    
+
     return matchesSearch && matchesTrade && matchesUrgency;
   });
 
   // Stats
   const stats = {
     total: tenders.length,
-    heating: tenders.filter(t => t.trade_required === "heating").length,
-    plumbing: tenders.filter(t => t.trade_required === "plumbing").length,
-    electrical: tenders.filter(t => t.trade_required === "electrical").length,
+    heating: tenders.filter((t) => t.trade_required === "heating").length,
+    plumbing: tenders.filter((t) => t.trade_required === "plumbing").length,
+    electrical: tenders.filter((t) => t.trade_required === "electrical").length,
   };
 
   if (isLoading) {
@@ -241,7 +249,7 @@ export default function TendersPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50"
@@ -272,7 +280,7 @@ export default function TendersPage() {
 
       <main className="container mx-auto px-4 py-8">
         {/* Stats */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
@@ -304,7 +312,7 @@ export default function TendersPage() {
         </motion.div>
 
         {/* Search & Filter */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -319,18 +327,26 @@ export default function TendersPage() {
               className="pl-10"
             />
           </div>
-          <Select value={filterTrade || "all"} onValueChange={(v) => setFilterTrade(v === "all" ? null : v)}>
+          <Select
+            value={filterTrade || "all"}
+            onValueChange={(v) => setFilterTrade(v === "all" ? null : v)}
+          >
             <SelectTrigger className="w-44">
               <SelectValue placeholder="All Trades" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Trades</SelectItem>
               {Object.entries(tradeCategories).map(([key, value]) => (
-                <SelectItem key={key} value={key}>{value.label}</SelectItem>
+                <SelectItem key={key} value={key}>
+                  {value.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={filterUrgency || "all"} onValueChange={(v) => setFilterUrgency(v === "all" ? null : v)}>
+          <Select
+            value={filterUrgency || "all"}
+            onValueChange={(v) => setFilterUrgency(v === "all" ? null : v)}
+          >
             <SelectTrigger className="w-36">
               <SelectValue placeholder="Urgency" />
             </SelectTrigger>
@@ -373,7 +389,11 @@ export default function TendersPage() {
 }
 
 function TenderCard({ tender }: { tender: Tender }) {
-  const trade = tradeCategories[tender.trade_required] || { label: tender.trade_required, icon: Wrench, color: "slate" };
+  const trade = tradeCategories[tender.trade_required] || {
+    label: tender.trade_required,
+    icon: Wrench,
+    color: "slate",
+  };
   const Icon = trade.icon;
 
   const urgencyConfig: Record<string, { label: string; color: string }> = {
@@ -398,17 +418,15 @@ function TenderCard({ tender }: { tender: Tender }) {
   };
 
   return (
-    <motion.div
-      variants={itemVariants}
-      layout
-      whileHover={{ y: -2 }}
-    >
+    <motion.div variants={itemVariants} layout whileHover={{ y: -2 }}>
       <Link href={`/tenders/${tender.id}`}>
         <Card className="border-0 shadow-lg hover:shadow-xl transition-all bg-white/70 dark:bg-slate-900/70 backdrop-blur cursor-pointer group">
           <CardContent className="p-5">
             <div className="flex gap-4">
               {/* Trade Icon */}
-              <div className={`w-14 h-14 rounded-xl ${colorClasses[trade.color] || colorClasses.slate} flex items-center justify-center flex-shrink-0`}>
+              <div
+                className={`w-14 h-14 rounded-xl ${colorClasses[trade.color] || colorClasses.slate} flex items-center justify-center flex-shrink-0`}
+              >
                 <Icon className="w-7 h-7" />
               </div>
 
@@ -439,12 +457,15 @@ function TenderCard({ tender }: { tender: Tender }) {
 
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                   <span className="flex items-center gap-1 text-green-600 font-semibold">
-                    <PoundSterling className="w-4 h-4" />
-                    £{tender.budget_min} - £{tender.budget_max}
+                    <PoundSterling className="w-4 h-4" />£{tender.budget_min} - £{tender.budget_max}
                   </span>
                   <span className="flex items-center gap-1 text-slate-500">
                     <Calendar className="w-4 h-4" />
-                    {tender.deadline ? (daysUntil > 0 ? `${daysUntil} days left` : "Deadline passed") : "No deadline"}
+                    {tender.deadline
+                      ? daysUntil > 0
+                        ? `${daysUntil} days left`
+                        : "Deadline passed"
+                      : "No deadline"}
                   </span>
                   <span className="flex items-center gap-1 text-slate-400">
                     <Clock className="w-4 h-4" />

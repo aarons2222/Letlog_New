@@ -46,9 +46,17 @@ export default function ForgotPasswordPage() {
         className="w-full max-w-md"
       >
         <Link href="/" className="inline-flex items-center gap-3 mb-12">
-          <Image src="/logo.svg" alt="LetLog" width={40} height={40} className="rounded-xl shadow-lg" />
+          <Image
+            src="/logo.svg"
+            alt="LetLog"
+            width={40}
+            height={40}
+            className="rounded-xl shadow-lg"
+          />
           <span className="font-semibold text-xl tracking-tight">
-            <span className="bg-gradient-to-r from-rose-500 to-orange-500 bg-clip-text text-transparent">Let</span>
+            <span className="bg-gradient-to-r from-rose-500 to-orange-500 bg-clip-text text-transparent">
+              Let
+            </span>
             <span>Log</span>
           </span>
         </Link>
@@ -69,19 +77,13 @@ export default function ForgotPasswordPage() {
               </div>
             </motion.div>
             <h1 className="text-2xl font-bold text-slate-900 mb-3">Check your email</h1>
-            <p className="text-slate-600 mb-2">
-              We've sent a password reset link to
-            </p>
+            <p className="text-slate-600 mb-2">We've sent a password reset link to</p>
             <p className="font-medium text-slate-900 mb-8">{email}</p>
             <p className="text-sm text-slate-500 mb-8">
               Didn't receive it? Check your spam folder or try again.
             </p>
             <div className="flex gap-3 justify-center">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsSuccess(false)}
-                className="rounded-xl"
-              >
+              <Button variant="outline" onClick={() => setIsSuccess(false)} className="rounded-xl">
                 Try again
               </Button>
               <Link href="/login">
@@ -94,13 +96,13 @@ export default function ForgotPasswordPage() {
         ) : (
           <>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Reset your password</h1>
-            <p className="text-slate-600 mb-8">
-              Enter your email and we'll send you a reset link
-            </p>
+            <p className="text-slate-600 mb-8">Enter your email and we'll send you a reset link</p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-700 font-medium">Email</Label>
+                <Label htmlFor="email" className="text-slate-700 font-medium">
+                  Email
+                </Label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
@@ -115,8 +117,8 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-base font-medium shadow-lg shadow-slate-900/10"
                 disabled={isLoading}
               >
@@ -131,8 +133,8 @@ export default function ForgotPasswordPage() {
                 )}
               </Button>
 
-              <Link 
-                href="/login" 
+              <Link
+                href="/login"
                 className="flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900 transition-colors mt-6"
               >
                 <ArrowLeft className="w-4 h-4" />

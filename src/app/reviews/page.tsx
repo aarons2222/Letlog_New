@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -17,9 +17,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { 
-  Star, 
-  Wrench, 
+import {
+  Star,
+  Wrench,
   Home,
   User,
   MessageSquare,
@@ -27,7 +27,7 @@ import {
   Clock,
   CheckCircle2,
   PenLine,
-  ShieldAlert
+  ShieldAlert,
 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 
@@ -40,17 +40,17 @@ type Role = "landlord" | "tenant" | "contractor";
 // - No random/early reviews
 
 // Star Rating Component
-function StarRating({ 
-  value, 
-  onChange, 
-  readonly = false 
-}: { 
-  value: number; 
+function StarRating({
+  value,
+  onChange,
+  readonly = false,
+}: {
+  value: number;
   onChange?: (value: number) => void;
   readonly?: boolean;
 }) {
   const [hover, setHover] = useState(0);
-  
+
   return (
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map((star) => (
@@ -61,14 +61,12 @@ function StarRating({
           onMouseEnter={() => !readonly && setHover(star)}
           onMouseLeave={() => !readonly && setHover(0)}
           disabled={readonly}
-          className={`transition-colors ${readonly ? 'cursor-default' : 'cursor-pointer'}`}
+          className={`transition-colors ${readonly ? "cursor-default" : "cursor-pointer"}`}
         >
-          <Star 
+          <Star
             className={`w-6 h-6 ${
-              star <= (hover || value) 
-                ? 'fill-amber-400 text-amber-400' 
-                : 'text-slate-300'
-            }`} 
+              star <= (hover || value) ? "fill-amber-400 text-amber-400" : "text-slate-300"
+            }`}
           />
         </button>
       ))}
@@ -131,13 +129,15 @@ export default function ReviewsPage() {
   const [currentRole, setCurrentRole] = useState<Role>("landlord");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Review data
-  const [pendingContractorReviews, setPendingContractorReviews] = useState<PendingContractorReview[]>([]);
+  const [pendingContractorReviews, setPendingContractorReviews] = useState<
+    PendingContractorReview[]
+  >([]);
   const [pendingLandlordReviews, setPendingLandlordReviews] = useState<PendingLandlordReview[]>([]);
   const [givenReviews, setGivenReviews] = useState<GivenReview[]>([]);
   const [receivedReviews, setReceivedReviews] = useState<ReceivedReview[]>([]);
-  
+
   // Additional ratings for landlord reviews
   const [ratingResponsiveness, setRatingResponsiveness] = useState(0);
   const [ratingCondition, setRatingCondition] = useState(0);
@@ -147,7 +147,9 @@ export default function ReviewsPage() {
     async function loadReviewData() {
       const supabase = createClient();
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           setIsLoading(false);
           return;
@@ -156,47 +158,51 @@ export default function ReviewsPage() {
 
         // Get user role
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
           .single();
-        
-        const role = (profile?.role as Role) || 'landlord';
+
+        const role = (profile?.role as Role) || "landlord";
         setCurrentRole(role);
 
         // #6: Load eligible reviews based on role and permission rules
-        if (role === 'landlord') {
+        if (role === "landlord") {
           // Landlord can review contractors ONLY after job status = 'completed'
           const { data: completedJobs } = await supabase
-            .from('tenders')
-            .select(`
+            .from("tenders")
+            .select(
+              `
               id, title, status,
               properties(address_line_1, city, postcode),
               quotes!inner(
                 id, contractor_id, status,
                 profiles:contractor_id(id, full_name)
               )
-            `)
-            .eq('landlord_id', user.id)
-            .eq('status', 'completed');
+            `,
+            )
+            .eq("landlord_id", user.id)
+            .eq("status", "completed");
 
           const contractorReviews: PendingContractorReview[] = [];
           completedJobs?.forEach((job: any) => {
-            const acceptedQuote = job.quotes?.find((q: any) => q.status === 'accepted' || q.status === 'completed');
+            const acceptedQuote = job.quotes?.find(
+              (q: any) => q.status === "accepted" || q.status === "completed",
+            );
             if (acceptedQuote?.profiles) {
               const prop = job.properties;
               const address = prop
-                ? [prop.address_line_1, prop.city, prop.postcode].filter(Boolean).join(', ')
-                : 'Property';
+                ? [prop.address_line_1, prop.city, prop.postcode].filter(Boolean).join(", ")
+                : "Property";
 
               contractorReviews.push({
                 id: `cr-${job.id}`,
-                type: 'contractor',
+                type: "contractor",
                 jobId: job.id,
                 contractorId: acceptedQuote.profiles.id,
-                contractorName: acceptedQuote.profiles.full_name || 'Contractor',
+                contractorName: acceptedQuote.profiles.full_name || "Contractor",
                 jobTitle: job.title,
-                completedDate: new Date().toISOString().split('T')[0],
+                completedDate: new Date().toISOString().split("T")[0],
                 propertyAddress: address,
                 // #6: Only eligible because we filtered by status = 'completed'
                 eligible: true,
@@ -206,26 +212,30 @@ export default function ReviewsPage() {
           setPendingContractorReviews(contractorReviews);
         }
 
-        if (role === 'tenant') {
+        if (role === "tenant") {
           // #6: Tenant can review landlord ONLY after tenancy ends
           const { data: endedTenancies } = await supabase
-            .from('tenancies')
-            .select(`
+            .from("tenancies")
+            .select(
+              `
               id, end_date, status,
               properties!inner(
                 address_line_1, city, postcode,
                 profiles:landlord_id(id, full_name)
               )
-            `)
-            .eq('tenant_id', user.id)
-            .in('status', ['ended', 'terminated']);
+            `,
+            )
+            .eq("tenant_id", user.id)
+            .in("status", ["ended", "terminated"]);
 
           const landlordReviews: PendingLandlordReview[] = [];
           endedTenancies?.forEach((tenancy: any) => {
             const prop = tenancy.properties;
             if (!prop) return;
-            const address = [prop.address_line_1, prop.city, prop.postcode].filter(Boolean).join(', ');
-            const endDate = tenancy.end_date || new Date().toISOString().split('T')[0];
+            const address = [prop.address_line_1, prop.city, prop.postcode]
+              .filter(Boolean)
+              .join(", ");
+            const endDate = tenancy.end_date || new Date().toISOString().split("T")[0];
             const reviewWindowEnd = new Date(endDate);
             reviewWindowEnd.setDate(reviewWindowEnd.getDate() + 60); // 60-day review window
 
@@ -233,55 +243,59 @@ export default function ReviewsPage() {
 
             landlordReviews.push({
               id: `lr-${tenancy.id}`,
-              type: 'landlord',
+              type: "landlord",
               tenancyId: tenancy.id,
-              landlordId: prop.profiles?.id || '',
-              landlordName: prop.profiles?.full_name || 'Landlord',
+              landlordId: prop.profiles?.id || "",
+              landlordName: prop.profiles?.full_name || "Landlord",
               propertyAddress: address,
               tenancyEnded: endDate,
-              reviewWindowEnds: reviewWindowEnd.toISOString().split('T')[0],
+              reviewWindowEnds: reviewWindowEnd.toISOString().split("T")[0],
               // #6: Only eligible if tenancy has ended AND within review window
               eligible: isWithinWindow,
-              reason: !isWithinWindow ? 'Review window has closed (60 days after tenancy end)' : undefined,
+              reason: !isWithinWindow
+                ? "Review window has closed (60 days after tenancy end)"
+                : undefined,
             });
           });
           setPendingLandlordReviews(landlordReviews);
         }
 
-        if (role === 'contractor') {
+        if (role === "contractor") {
           // #6: Contractor can review landlord ONLY after job is complete
           const { data: completedQuotes } = await supabase
-            .from('quotes')
-            .select(`
+            .from("quotes")
+            .select(
+              `
               id, status,
               tenders!inner(
                 id, title, status, landlord_id,
                 properties(address_line_1, city, postcode),
                 profiles:landlord_id(id, full_name)
               )
-            `)
-            .eq('contractor_id', user.id)
-            .in('status', ['completed', 'accepted']);
+            `,
+            )
+            .eq("contractor_id", user.id)
+            .in("status", ["completed", "accepted"]);
 
           const landlordReviewsForContractor: PendingLandlordReview[] = [];
           completedQuotes?.forEach((quote: any) => {
             const tender = quote.tenders;
-            if (!tender || tender.status !== 'completed') return; // #6: Must be completed
-            
+            if (!tender || tender.status !== "completed") return; // #6: Must be completed
+
             const prop = tender.properties;
             const address = prop
-              ? [prop.address_line_1, prop.city, prop.postcode].filter(Boolean).join(', ')
-              : 'Property';
+              ? [prop.address_line_1, prop.city, prop.postcode].filter(Boolean).join(", ")
+              : "Property";
 
             landlordReviewsForContractor.push({
               id: `clr-${tender.id}`,
-              type: 'landlord',
+              type: "landlord",
               tenancyId: tender.id,
-              landlordId: tender.profiles?.id || '',
-              landlordName: tender.profiles?.full_name || 'Landlord',
+              landlordId: tender.profiles?.id || "",
+              landlordName: tender.profiles?.full_name || "Landlord",
               propertyAddress: address,
-              tenancyEnded: new Date().toISOString().split('T')[0],
-              reviewWindowEnds: '',
+              tenancyEnded: new Date().toISOString().split("T")[0],
+              reviewWindowEnds: "",
               eligible: true,
             });
           });
@@ -290,41 +304,48 @@ export default function ReviewsPage() {
 
         // Fetch existing reviews given and received
         const { data: givenData } = await supabase
-          .from('reviews')
-          .select('id, rating, content, review_type, created_at, reviewee_id, profiles:reviewee_id(full_name)')
-          .eq('reviewer_id', user.id)
-          .order('created_at', { ascending: false });
+          .from("reviews")
+          .select(
+            "id, rating, content, review_type, created_at, reviewee_id, profiles:reviewee_id(full_name)",
+          )
+          .eq("reviewer_id", user.id)
+          .order("created_at", { ascending: false });
 
         if (givenData) {
-          setGivenReviews(givenData.map((r: any) => ({
-            id: r.id,
-            type: r.review_type || 'contractor',
-            name: r.profiles?.full_name || 'User',
-            rating: r.rating,
-            text: r.content || '',
-            date: r.created_at?.split('T')[0] || '',
-          })));
+          setGivenReviews(
+            givenData.map((r: any) => ({
+              id: r.id,
+              type: r.review_type || "contractor",
+              name: r.profiles?.full_name || "User",
+              rating: r.rating,
+              text: r.content || "",
+              date: r.created_at?.split("T")[0] || "",
+            })),
+          );
         }
 
         const { data: receivedData } = await supabase
-          .from('reviews')
-          .select('id, rating, content, review_type, created_at, reviewer_id, profiles:reviewer_id(full_name, role)')
-          .eq('reviewee_id', user.id)
-          .order('created_at', { ascending: false });
+          .from("reviews")
+          .select(
+            "id, rating, content, review_type, created_at, reviewer_id, profiles:reviewer_id(full_name, role)",
+          )
+          .eq("reviewee_id", user.id)
+          .order("created_at", { ascending: false });
 
         if (receivedData) {
-          setReceivedReviews(receivedData.map((r: any) => ({
-            id: r.id,
-            from: r.profiles?.full_name || 'User',
-            fromType: r.profiles?.role || 'user',
-            rating: r.rating,
-            text: r.content || '',
-            date: r.created_at?.split('T')[0] || '',
-          })));
+          setReceivedReviews(
+            receivedData.map((r: any) => ({
+              id: r.id,
+              from: r.profiles?.full_name || "User",
+              fromType: r.profiles?.role || "user",
+              rating: r.rating,
+              text: r.content || "",
+              date: r.created_at?.split("T")[0] || "",
+            })),
+          );
         }
-
       } catch (err) {
-        console.error('Error loading reviews:', err);
+        console.error("Error loading reviews:", err);
       } finally {
         setIsLoading(false);
       }
@@ -368,20 +389,18 @@ export default function ReviewsPage() {
       return;
     }
 
-    const { error } = await supabase
-      .from('reviews')
-      .insert({
-        reviewer_id: currentUserId,
-        reviewee_id: revieweeId,
-        rating,
-        content: reviewText,
-        review_type: selectedItem?.type === 'contractor' ? 'contractor' : 'landlord',
-        tender_id: selectedItem?.jobId || null,
-        tenancy_id: selectedItem?.tenancyId || null,
-      });
+    const { error } = await supabase.from("reviews").insert({
+      reviewer_id: currentUserId,
+      reviewee_id: revieweeId,
+      rating,
+      content: reviewText,
+      review_type: selectedItem?.type === "contractor" ? "contractor" : "landlord",
+      tender_id: selectedItem?.jobId || null,
+      tenancy_id: selectedItem?.tenancyId || null,
+    });
 
     if (error) {
-      console.error('Review submission error:', error);
+      console.error("Review submission error:", error);
       toast.error("Failed to submit review");
       return;
     }
@@ -389,7 +408,7 @@ export default function ReviewsPage() {
     toast.success("Review submitted!", {
       description: "Thank you for your feedback.",
     });
-    
+
     setReviewDialogOpen(false);
     setSelectedItem(null);
   };
@@ -433,9 +452,12 @@ export default function ReviewsPage() {
           <div className="text-sm text-blue-700">
             <p className="font-medium">Review permissions</p>
             <p className="mt-1">
-              {currentRole === 'landlord' && "You can review contractors after their job is marked as completed."}
-              {currentRole === 'tenant' && "You can review your landlord after your tenancy ends (within 60 days)."}
-              {currentRole === 'contractor' && "You can review landlords after the job is marked as completed."}
+              {currentRole === "landlord" &&
+                "You can review contractors after their job is marked as completed."}
+              {currentRole === "tenant" &&
+                "You can review your landlord after your tenancy ends (within 60 days)."}
+              {currentRole === "contractor" &&
+                "You can review landlords after the job is marked as completed."}
             </p>
           </div>
         </div>
@@ -478,15 +500,15 @@ export default function ReviewsPage() {
                             <div className="flex items-center gap-4 mt-3 text-sm text-slate-500">
                               <span className="flex items-center gap-1">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                {currentRole === 'tenant'
-                                  ? `Tenancy ended ${new Date(item.tenancyEnded).toLocaleDateString('en-GB')}`
-                                  : 'Job completed'
-                                }
+                                {currentRole === "tenant"
+                                  ? `Tenancy ended ${new Date(item.tenancyEnded).toLocaleDateString("en-GB")}`
+                                  : "Job completed"}
                               </span>
                               {item.reviewWindowEnds && (
                                 <span className="flex items-center gap-1">
                                   <Clock className="w-4 h-4 text-amber-500" />
-                                  Review window ends {new Date(item.reviewWindowEnds).toLocaleDateString('en-GB')}
+                                  Review window ends{" "}
+                                  {new Date(item.reviewWindowEnds).toLocaleDateString("en-GB")}
                                 </span>
                               )}
                             </div>
@@ -498,8 +520,8 @@ export default function ReviewsPage() {
                               </p>
                             )}
                           </div>
-                          <Button 
-                            onClick={() => openReviewDialog({ ...item, reviewType: 'landlord' })}
+                          <Button
+                            onClick={() => openReviewDialog({ ...item, reviewType: "landlord" })}
                             className="rounded-xl"
                             disabled={!item.eligible}
                             variant={item.eligible ? "default" : "outline"}
@@ -533,7 +555,7 @@ export default function ReviewsPage() {
                             <p className="text-sm text-slate-500 mt-1">{item.propertyAddress}</p>
                             <div className="flex items-center gap-1 mt-3 text-sm text-slate-500">
                               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                              Completed {new Date(item.completedDate).toLocaleDateString('en-GB')}
+                              Completed {new Date(item.completedDate).toLocaleDateString("en-GB")}
                             </div>
                             {/* #6: Show reason if not eligible */}
                             {!item.eligible && item.reason && (
@@ -543,8 +565,8 @@ export default function ReviewsPage() {
                               </p>
                             )}
                           </div>
-                          <Button 
-                            onClick={() => openReviewDialog({ ...item, reviewType: 'contractor' })}
+                          <Button
+                            onClick={() => openReviewDialog({ ...item, reviewType: "contractor" })}
                             className="rounded-xl"
                             disabled={!item.eligible}
                             variant={item.eligible ? "default" : "outline"}
@@ -569,9 +591,12 @@ export default function ReviewsPage() {
                   <h3 className="text-lg font-semibold text-slate-900 mb-2">All caught up!</h3>
                   <p className="text-slate-600">You have no pending reviews to write.</p>
                   <p className="text-sm text-slate-400 mt-2">
-                    {currentRole === 'landlord' && "Reviews become available after a contractor completes a job."}
-                    {currentRole === 'tenant' && "You can review your landlord after your tenancy ends."}
-                    {currentRole === 'contractor' && "You can review landlords after completing a job."}
+                    {currentRole === "landlord" &&
+                      "Reviews become available after a contractor completes a job."}
+                    {currentRole === "tenant" &&
+                      "You can review your landlord after your tenancy ends."}
+                    {currentRole === "contractor" &&
+                      "You can review landlords after completing a job."}
                   </p>
                 </CardContent>
               </Card>
@@ -591,10 +616,12 @@ export default function ReviewsPage() {
                 <Card key={review.id} className="rounded-2xl">
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        review.type === 'contractor' ? 'bg-amber-100' : 'bg-blue-100'
-                      }`}>
-                        {review.type === 'contractor' ? (
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          review.type === "contractor" ? "bg-amber-100" : "bg-blue-100"
+                        }`}
+                      >
+                        {review.type === "contractor" ? (
                           <Wrench className="w-5 h-5 text-amber-600" />
                         ) : (
                           <Home className="w-5 h-5 text-blue-600" />
@@ -604,7 +631,7 @@ export default function ReviewsPage() {
                         <div className="flex items-center justify-between">
                           <h3 className="font-semibold text-slate-900">{review.name}</h3>
                           <span className="text-sm text-slate-500">
-                            {new Date(review.date).toLocaleDateString('en-GB')}
+                            {new Date(review.date).toLocaleDateString("en-GB")}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 mt-1">
@@ -642,7 +669,7 @@ export default function ReviewsPage() {
                             <span className="text-sm text-slate-500">{review.fromType}</span>
                           </div>
                           <span className="text-sm text-slate-500">
-                            {new Date(review.date).toLocaleDateString('en-GB')}
+                            {new Date(review.date).toLocaleDateString("en-GB")}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 mt-1">
@@ -664,7 +691,7 @@ export default function ReviewsPage() {
         <DialogContent className="rounded-2xl max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {selectedItem?.reviewType === 'landlord' ? (
+              {selectedItem?.reviewType === "landlord" ? (
                 <>
                   <Home className="w-5 h-5 text-blue-500" />
                   Review Landlord
@@ -677,10 +704,9 @@ export default function ReviewsPage() {
               )}
             </DialogTitle>
             <DialogDescription>
-              {selectedItem?.reviewType === 'landlord' 
+              {selectedItem?.reviewType === "landlord"
                 ? `Share your experience with ${selectedItem?.landlordName}`
-                : `Share your experience with ${selectedItem?.contractorName}`
-              }
+                : `Share your experience with ${selectedItem?.contractorName}`}
             </DialogDescription>
           </DialogHeader>
 
@@ -692,7 +718,7 @@ export default function ReviewsPage() {
             </div>
 
             {/* Additional ratings for landlord reviews */}
-            {selectedItem?.reviewType === 'landlord' && (
+            {selectedItem?.reviewType === "landlord" && (
               <>
                 <div className="space-y-2">
                   <Label>Responsiveness</Label>
@@ -714,7 +740,7 @@ export default function ReviewsPage() {
               <Label>Your Review</Label>
               <Textarea
                 placeholder={
-                  selectedItem?.reviewType === 'landlord'
+                  selectedItem?.reviewType === "landlord"
                     ? "Share your experience as a tenant..."
                     : "How was the quality of work? Was it completed on time?"
                 }
@@ -727,7 +753,11 @@ export default function ReviewsPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReviewDialogOpen(false)} className="rounded-xl">
+            <Button
+              variant="outline"
+              onClick={() => setReviewDialogOpen(false)}
+              className="rounded-xl"
+            >
               Cancel
             </Button>
             <Button onClick={submitReview} className="rounded-xl">

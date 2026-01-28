@@ -15,9 +15,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { 
-  ArrowLeft, Plus, Search, Home, MapPin, Bed, Bath, Building2,
-  Users, AlertTriangle, MoreVertical, Edit, Trash2, Eye
+import {
+  Plus,
+  Search,
+  Home,
+  Bed,
+  Bath,
+  Building2,
+  Users,
+  AlertTriangle,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Eye,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,7 +35,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { createClient } from "@/lib/supabase/client";
+import { containerVariants, itemVariants } from "@/lib/animations";
 import { toast } from "sonner";
 
 interface Property {
@@ -44,19 +54,6 @@ interface Property {
   image: string | null;
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
-
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -65,14 +62,13 @@ export default function PropertiesPage() {
 
   useEffect(() => {
     async function fetchProperties() {
-      const supabase = createClient();
       try {
         // Fetch properties via server API (bypasses RLS)
-        const res = await fetch('/api/properties');
+        const res = await fetch("/api/properties");
         if (!res.ok) {
           const err = await res.json();
-          console.error('Error fetching properties:', err);
-          toast.error('Failed to load properties');
+          console.error("Error fetching properties:", err);
+          toast.error("Failed to load properties");
           setIsLoading(false);
           return;
         }
@@ -82,21 +78,21 @@ export default function PropertiesPage() {
         const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
         const mapped: Property[] = (props || []).map((p: any) => {
-          const activeTenancy = p.tenancies?.find((t: any) => t.status === 'active');
+          const activeTenancy = p.tenancies?.find((t: any) => t.status === "active");
           const tenantCount = activeTenancy?.tenancy_tenants?.length || 0;
-          const status = activeTenancy ? 'occupied' : 'vacant';
+          const status = activeTenancy ? "occupied" : "vacant";
           const rentAmount = activeTenancy?.rent_amount || 0;
 
           // Compute compliance status
-          let complianceStatus = 'valid';
+          let complianceStatus = "valid";
           if (p.compliance_records && p.compliance_records.length > 0) {
             const hasExpired = p.compliance_records.some((c: any) => new Date(c.expiry_date) < now);
             const hasExpiring = p.compliance_records.some((c: any) => {
               const exp = new Date(c.expiry_date);
               return exp >= now && exp <= thirtyDaysFromNow;
             });
-            if (hasExpired) complianceStatus = 'expired';
-            else if (hasExpiring) complianceStatus = 'expiring';
+            if (hasExpired) complianceStatus = "expired";
+            else if (hasExpiring) complianceStatus = "expiring";
           }
 
           return {
@@ -118,8 +114,8 @@ export default function PropertiesPage() {
 
         setProperties(mapped);
       } catch (err) {
-        console.error('Error:', err);
-        toast.error('Failed to load properties');
+        console.error("Error:", err);
+        toast.error("Failed to load properties");
       } finally {
         setIsLoading(false);
       }
@@ -128,22 +124,24 @@ export default function PropertiesPage() {
     fetchProperties();
   }, []);
 
-  const filteredProperties = properties.filter(p => {
-    const matchesSearch = 
+  const filteredProperties = properties.filter((p) => {
+    const matchesSearch =
       p.address_line_1.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.postcode.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesFilter = !filterStatus || p.status === filterStatus;
-    
+
     return matchesSearch && matchesFilter;
   });
 
   const stats = {
     total: properties.length,
-    occupied: properties.filter(p => p.status === "occupied").length,
-    vacant: properties.filter(p => p.status === "vacant").length,
-    expiring: properties.filter(p => p.compliance_status === "expiring" || p.compliance_status === "expired").length,
+    occupied: properties.filter((p) => p.status === "occupied").length,
+    vacant: properties.filter((p) => p.status === "vacant").length,
+    expiring: properties.filter(
+      (p) => p.compliance_status === "expiring" || p.compliance_status === "expired",
+    ).length,
   };
 
   if (isLoading) {
@@ -161,7 +159,7 @@ export default function PropertiesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50"
@@ -184,7 +182,7 @@ export default function PropertiesPage() {
 
       <main className="container mx-auto px-4 py-8">
         {/* Stats */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
@@ -216,7 +214,7 @@ export default function PropertiesPage() {
         </motion.div>
 
         {/* Search & Filter */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -232,22 +230,22 @@ export default function PropertiesPage() {
             />
           </div>
           <div className="flex gap-2">
-            <Button 
-              variant={filterStatus === null ? "default" : "outline"} 
+            <Button
+              variant={filterStatus === null ? "default" : "outline"}
               size="sm"
               onClick={() => setFilterStatus(null)}
             >
               All
             </Button>
-            <Button 
-              variant={filterStatus === "occupied" ? "default" : "outline"} 
+            <Button
+              variant={filterStatus === "occupied" ? "default" : "outline"}
               size="sm"
               onClick={() => setFilterStatus("occupied")}
             >
               Occupied
             </Button>
-            <Button 
-              variant={filterStatus === "vacant" ? "default" : "outline"} 
+            <Button
+              variant={filterStatus === "vacant" ? "default" : "outline"}
               size="sm"
               onClick={() => setFilterStatus("vacant")}
             >
@@ -304,15 +302,12 @@ function PropertyCard({ property }: { property: Property }) {
   };
 
   const status = statusConfig[property.status as keyof typeof statusConfig] || statusConfig.vacant;
-  const compliance = complianceConfig[property.compliance_status as keyof typeof complianceConfig] || complianceConfig.valid;
+  const compliance =
+    complianceConfig[property.compliance_status as keyof typeof complianceConfig] ||
+    complianceConfig.valid;
 
   return (
-    <motion.div
-      variants={itemVariants}
-      layout
-      whileHover={{ y: -2 }}
-      className="group"
-    >
+    <motion.div variants={itemVariants} layout whileHover={{ y: -2 }} className="group">
       <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/70 dark:bg-slate-900/70 backdrop-blur overflow-hidden">
         <CardContent className="p-0">
           <div className="flex flex-col md:flex-row">
@@ -330,18 +325,26 @@ function PropertyCard({ property }: { property: Property }) {
                   <Link href={`/properties/${property.id}`}>
                     <h3 className="font-semibold text-lg text-slate-800 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer">
                       {property.address_line_1}
-                      {property.address_line_2 ? `, ${property.address_line_2}` : ""}, {property.city}, {property.postcode}
+                      {property.address_line_2 ? `, ${property.address_line_2}` : ""},{" "}
+                      {property.city}, {property.postcode}
                     </h3>
                   </Link>
                   <p className="text-sm text-slate-500 flex items-center gap-1 mt-0.5">
                     <Building2 className="w-3 h-3" />
-                    {property.property_type ? property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1) : "Property"}
+                    {property.property_type
+                      ? property.property_type.charAt(0).toUpperCase() +
+                        property.property_type.slice(1)
+                      : "Property"}
                   </p>
                 </div>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
                       <MoreVertical className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -353,7 +356,10 @@ function PropertyCard({ property }: { property: Property }) {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href={`/properties/${property.id}/edit`} className="flex items-center gap-2">
+                      <Link
+                        href={`/properties/${property.id}/edit`}
+                        className="flex items-center gap-2"
+                      >
                         <Edit className="w-4 h-4" />
                         Edit
                       </Link>

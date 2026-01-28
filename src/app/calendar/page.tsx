@@ -9,9 +9,17 @@ import Link from "next/link";
 import { RoleGuard } from "@/components/RoleGuard";
 import { createClient } from "@/lib/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
-import { 
-  ChevronLeft, ChevronRight, Home, Calendar as CalendarIcon,
-  AlertTriangle, Key, Wrench, FileText, ArrowLeft, GripVertical
+import {
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  Calendar as CalendarIcon,
+  AlertTriangle,
+  Key,
+  Wrench,
+  FileText,
+  ArrowLeft,
+  GripVertical,
 } from "lucide-react";
 import {
   DndContext,
@@ -44,16 +52,50 @@ interface CalendarEvent {
 
 // Events will be fetched from Supabase (tenancies, compliance_records, issues)
 
-const eventConfig: Record<EventType, { color: string; bgColor: string; icon: React.ElementType; dotColor: string }> = {
-  tenancy_start: { color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30", icon: Key, dotColor: "bg-green-500" },
-  tenancy_end: { color: "text-orange-600", bgColor: "bg-orange-100 dark:bg-orange-900/30", icon: Key, dotColor: "bg-orange-500" },
-  compliance: { color: "text-red-600", bgColor: "bg-red-100 dark:bg-red-900/30", icon: AlertTriangle, dotColor: "bg-red-500" },
-  rent_due: { color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30", icon: FileText, dotColor: "bg-blue-500" },
-  maintenance: { color: "text-purple-600", bgColor: "bg-purple-100 dark:bg-purple-900/30", icon: Wrench, dotColor: "bg-purple-500" },
+const eventConfig: Record<
+  EventType,
+  { color: string; bgColor: string; icon: React.ElementType; dotColor: string }
+> = {
+  tenancy_start: {
+    color: "text-green-600",
+    bgColor: "bg-green-100 dark:bg-green-900/30",
+    icon: Key,
+    dotColor: "bg-green-500",
+  },
+  tenancy_end: {
+    color: "text-orange-600",
+    bgColor: "bg-orange-100 dark:bg-orange-900/30",
+    icon: Key,
+    dotColor: "bg-orange-500",
+  },
+  compliance: {
+    color: "text-red-600",
+    bgColor: "bg-red-100 dark:bg-red-900/30",
+    icon: AlertTriangle,
+    dotColor: "bg-red-500",
+  },
+  rent_due: {
+    color: "text-blue-600",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
+    icon: FileText,
+    dotColor: "bg-blue-500",
+  },
+  maintenance: {
+    color: "text-purple-600",
+    bgColor: "bg-purple-100 dark:bg-purple-900/30",
+    icon: Wrench,
+    dotColor: "bg-purple-500",
+  },
 };
 
 // Draggable Event Component
-function DraggableEvent({ event, isOverlay = false }: { event: CalendarEvent; isOverlay?: boolean }) {
+function DraggableEvent({
+  event,
+  isOverlay = false,
+}: {
+  event: CalendarEvent;
+  isOverlay?: boolean;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
     data: event,
@@ -73,9 +115,7 @@ function DraggableEvent({ event, isOverlay = false }: { event: CalendarEvent; is
           <Icon className={`w-4 h-4 ${config.color} mt-0.5`} />
           <div>
             <p className={`font-medium text-sm ${config.color}`}>{event.title}</p>
-            {event.property && (
-              <p className="text-xs text-slate-500">{event.property}</p>
-            )}
+            {event.property && <p className="text-xs text-slate-500">{event.property}</p>}
           </div>
         </div>
       </motion.div>
@@ -117,17 +157,17 @@ function DraggableEvent({ event, isOverlay = false }: { event: CalendarEvent; is
 }
 
 // Droppable Day Cell Component
-function DroppableDay({ 
-  day, 
-  month, 
-  year, 
-  events, 
-  isToday, 
-  isSelected, 
-  onSelect 
-}: { 
-  day: number; 
-  month: number; 
+function DroppableDay({
+  day,
+  month,
+  year,
+  events,
+  isToday,
+  isSelected,
+  onSelect,
+}: {
+  day: number;
+  month: number;
   year: number;
   events: CalendarEvent[];
   isToday: boolean;
@@ -140,7 +180,7 @@ function DroppableDay({
     data: { day, month, year },
   });
 
-  const hasUrgent = events.some(e => e.urgent);
+  const hasUrgent = events.some((e) => e.urgent);
 
   return (
     <motion.div
@@ -155,9 +195,7 @@ function DroppableDay({
       whileTap={{ scale: 0.98 }}
     >
       <div className="flex flex-col h-full">
-        <span className={`text-sm font-medium ${isSelected ? "text-white" : ""}`}>
-          {day}
-        </span>
+        <span className={`text-sm font-medium ${isSelected ? "text-white" : ""}`}>{day}</span>
         {events.length > 0 && (
           <div className="flex gap-0.5 mt-1 flex-wrap">
             {events.slice(0, 3).map((event) => (
@@ -176,7 +214,7 @@ function DroppableDay({
         <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
       )}
       {isOver && (
-        <motion.div 
+        <motion.div
           className="absolute inset-0 bg-blue-500/10 rounded-lg pointer-events-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -198,7 +236,9 @@ export default function CalendarPage() {
     async function fetchCalendarEvents() {
       const supabase = createClient();
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           setIsLoading(false);
           return;
@@ -208,22 +248,26 @@ export default function CalendarPage() {
 
         // Fetch tenancies for start/end dates
         const { data: tenancies } = await supabase
-          .from('tenancies')
-          .select(`
+          .from("tenancies")
+          .select(
+            `
             id, start_date, end_date, status,
             properties!inner(address_line_1, city, landlord_id)
-          `)
-          .eq('properties.landlord_id', user.id);
+          `,
+          )
+          .eq("properties.landlord_id", user.id);
 
         if (tenancies) {
           tenancies.forEach((t: any) => {
-            const address = [t.properties?.address_line_1, t.properties?.city].filter(Boolean).join(', ');
+            const address = [t.properties?.address_line_1, t.properties?.city]
+              .filter(Boolean)
+              .join(", ");
             if (t.start_date) {
               calendarEvents.push({
                 id: `tenancy-start-${t.id}`,
                 date: new Date(t.start_date),
-                title: 'Tenancy starts',
-                type: 'tenancy_start',
+                title: "Tenancy starts",
+                type: "tenancy_start",
                 property: address,
               });
             }
@@ -231,8 +275,8 @@ export default function CalendarPage() {
               calendarEvents.push({
                 id: `tenancy-end-${t.id}`,
                 date: new Date(t.end_date),
-                title: 'Tenancy ends',
-                type: 'tenancy_end',
+                title: "Tenancy ends",
+                type: "tenancy_end",
                 property: address,
               });
             }
@@ -241,12 +285,14 @@ export default function CalendarPage() {
 
         // Fetch compliance records for expiry dates
         const { data: compliance } = await supabase
-          .from('compliance_records')
-          .select(`
+          .from("compliance_records")
+          .select(
+            `
             id, expiry_date, compliance_type, type,
             properties!inner(address_line_1, city, landlord_id)
-          `)
-          .eq('properties.landlord_id', user.id);
+          `,
+          )
+          .eq("properties.landlord_id", user.id);
 
         if (compliance) {
           const now = new Date();
@@ -254,13 +300,15 @@ export default function CalendarPage() {
           compliance.forEach((c: any) => {
             if (c.expiry_date) {
               const expiryDate = new Date(c.expiry_date);
-              const address = [c.properties?.address_line_1, c.properties?.city].filter(Boolean).join(', ');
-              const typeName = c.compliance_type || c.type || 'Certificate';
+              const address = [c.properties?.address_line_1, c.properties?.city]
+                .filter(Boolean)
+                .join(", ");
+              const typeName = c.compliance_type || c.type || "Certificate";
               calendarEvents.push({
                 id: `compliance-${c.id}`,
                 date: expiryDate,
                 title: `${typeName} expires`,
-                type: 'compliance',
+                type: "compliance",
                 property: address,
                 urgent: expiryDate <= thirtyDaysFromNow,
               });
@@ -270,22 +318,26 @@ export default function CalendarPage() {
 
         // Fetch open issues as maintenance events
         const { data: issues } = await supabase
-          .from('issues')
-          .select(`
+          .from("issues")
+          .select(
+            `
             id, title, created_at,
             properties!inner(address_line_1, city, landlord_id)
-          `)
-          .eq('properties.landlord_id', user.id)
-          .in('status', ['open', 'in_progress', 'reported', 'acknowledged']);
+          `,
+          )
+          .eq("properties.landlord_id", user.id)
+          .in("status", ["open", "in_progress", "reported", "acknowledged"]);
 
         if (issues) {
           issues.forEach((issue: any) => {
-            const address = [issue.properties?.address_line_1, issue.properties?.city].filter(Boolean).join(', ');
+            const address = [issue.properties?.address_line_1, issue.properties?.city]
+              .filter(Boolean)
+              .join(", ");
             calendarEvents.push({
               id: `issue-${issue.id}`,
               date: new Date(issue.created_at),
-              title: issue.title || 'Maintenance issue',
-              type: 'maintenance',
+              title: issue.title || "Maintenance issue",
+              type: "maintenance",
               property: address,
             });
           });
@@ -293,8 +345,8 @@ export default function CalendarPage() {
 
         setEvents(calendarEvents);
       } catch (err) {
-        console.error('Error fetching calendar events:', err);
-        toast.error('Failed to load calendar events');
+        console.error("Error fetching calendar events:", err);
+        toast.error("Failed to load calendar events");
       } finally {
         setIsLoading(false);
       }
@@ -318,12 +370,14 @@ export default function CalendarPage() {
         // 1. Tenancy start/end dates
         const { data: tenancies } = await supabase
           .from("tenancies")
-          .select(`
+          .select(
+            `
             id, start_date, end_date, status, rent_amount,
             properties (
               id, address_line_1, city, landlord_id
             )
-          `)
+          `,
+          )
           .order("start_date", { ascending: true });
 
         if (tenancies) {
@@ -351,7 +405,9 @@ export default function CalendarPage() {
               if (t.end_date) {
                 const endDate = new Date(t.end_date);
                 const now = new Date();
-                const daysUntil = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                const daysUntil = Math.ceil(
+                  (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+                );
 
                 calEvents.push({
                   id: `tenancy-end-${t.id}`,
@@ -369,9 +425,11 @@ export default function CalendarPage() {
               // Generate monthly rent due events for active tenancies
               if (t.status === "active" && t.start_date) {
                 const start = new Date(t.start_date);
-                const end = t.end_date ? new Date(t.end_date) : new Date(new Date().getFullYear(), 11, 31);
+                const end = t.end_date
+                  ? new Date(t.end_date)
+                  : new Date(new Date().getFullYear(), 11, 31);
                 const rentDay = start.getDate();
-                
+
                 // Generate for a window: 3 months back to 6 months forward
                 const windowStart = new Date();
                 windowStart.setMonth(windowStart.getMonth() - 3);
@@ -399,12 +457,14 @@ export default function CalendarPage() {
         // 2. Compliance record expiry dates
         const { data: compliance } = await supabase
           .from("compliance_records")
-          .select(`
+          .select(
+            `
             id, compliance_type, type, expiry_date, status,
             properties (
               id, address_line_1, city, landlord_id
             )
-          `)
+          `,
+          )
           .order("expiry_date", { ascending: true });
 
         if (compliance) {
@@ -427,7 +487,9 @@ export default function CalendarPage() {
               const compType = c.compliance_type || c.type || "gas_safety";
               const expiry = new Date(c.expiry_date);
               const now = new Date();
-              const daysUntil = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const daysUntil = Math.ceil(
+                (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+              );
 
               calEvents.push({
                 id: `compliance-${c.id}`,
@@ -446,12 +508,14 @@ export default function CalendarPage() {
         // 3. Open/in-progress issues as maintenance events
         const { data: issues } = await supabase
           .from("issues")
-          .select(`
+          .select(
+            `
             id, title, status, priority, created_at, scheduled_date, due_date,
             properties (
               id, address_line_1, city, landlord_id
             )
-          `)
+          `,
+          )
           .in("status", ["open", "in_progress"])
           .order("created_at", { ascending: false });
 
@@ -476,7 +540,11 @@ export default function CalendarPage() {
                 urgent: i.priority === "urgent" || i.priority === "high",
                 sourceTable: "issues",
                 sourceId: i.id,
-                sourceField: i.scheduled_date ? "scheduled_date" : (i.due_date ? "due_date" : "created_at"),
+                sourceField: i.scheduled_date
+                  ? "scheduled_date"
+                  : i.due_date
+                    ? "due_date"
+                    : "created_at",
               });
             });
         }
@@ -499,19 +567,29 @@ export default function CalendarPage() {
       activationConstraint: {
         distance: 8, // 8px movement required before drag starts
       },
-    })
+    }),
   );
 
   // Get days in month
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
-  
+
   // Adjust for Monday start (0 = Monday, 6 = Sunday)
   const adjustedFirstDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
 
   const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -532,18 +610,21 @@ export default function CalendarPage() {
   };
 
   // Get events for a specific day
-  const getEventsForDay = useCallback((day: number, m: number = month, y: number = year): CalendarEvent[] => {
-    return events.filter(event => {
-      const eventDate = new Date(event.date);
-      return eventDate.getDate() === day && 
-             eventDate.getMonth() === m && 
-             eventDate.getFullYear() === y;
-    });
-  }, [events, month, year]);
+  const getEventsForDay = useCallback(
+    (day: number, m: number = month, y: number = year): CalendarEvent[] => {
+      return events.filter((event) => {
+        const eventDate = new Date(event.date);
+        return (
+          eventDate.getDate() === day && eventDate.getMonth() === m && eventDate.getFullYear() === y
+        );
+      });
+    },
+    [events, month, year],
+  );
 
   // Get events for selected date
-  const selectedDateEvents = selectedDate 
-    ? events.filter(event => {
+  const selectedDateEvents = selectedDate
+    ? events.filter((event) => {
         const eventDate = new Date(event.date);
         return eventDate.toDateString() === selectedDate.toDateString();
       })
@@ -553,28 +634,28 @@ export default function CalendarPage() {
   const today = new Date();
   const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
   const upcomingEvents = events
-    .filter(event => event.date >= today && event.date <= thirtyDaysFromNow)
+    .filter((event) => event.date >= today && event.date <= thirtyDaysFromNow)
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 
   // Check if a day is today
   const isToday = (day: number): boolean => {
     const today = new Date();
-    return day === today.getDate() && 
-           month === today.getMonth() && 
-           year === today.getFullYear();
+    return day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
   };
 
   // Check if a day is selected
   const isSelected = (day: number): boolean => {
     if (!selectedDate) return false;
-    return day === selectedDate.getDate() && 
-           month === selectedDate.getMonth() && 
-           year === selectedDate.getFullYear();
+    return (
+      day === selectedDate.getDate() &&
+      month === selectedDate.getMonth() &&
+      year === selectedDate.getFullYear()
+    );
   };
 
   // Drag handlers
   const handleDragStart = (event: DragStartEvent) => {
-    const draggedEvent = events.find(e => e.id === event.active.id);
+    const draggedEvent = events.find((e) => e.id === event.active.id);
     if (draggedEvent) {
       setActiveEvent(draggedEvent);
     }
@@ -588,14 +669,14 @@ export default function CalendarPage() {
 
     const eventId = active.id as string;
     const dropData = over.data.current as { day: number; month: number; year: number } | undefined;
-    
+
     if (!dropData) return;
 
     const { day, month: dropMonth, year: dropYear } = dropData;
     const newDate = new Date(dropYear, dropMonth, day);
 
     // Find the event
-    const draggedEvent = events.find(e => e.id === eventId);
+    const draggedEvent = events.find((e) => e.id === eventId);
     if (!draggedEvent) return;
 
     // Don't allow rescheduling rent_due events (they're auto-derived)
@@ -605,20 +686,22 @@ export default function CalendarPage() {
     }
 
     // Update local state immediately
-    setEvents(prevEvents => 
-      prevEvents.map(e => {
+    setEvents((prevEvents) =>
+      prevEvents.map((e) => {
         if (e.id === eventId) {
           return { ...e, date: newDate };
         }
         return e;
-      })
+      }),
     );
 
-    toast.success(`Rescheduled "${draggedEvent.title}" to ${newDate.toLocaleDateString("en-GB", { 
-      weekday: "short", 
-      day: "numeric", 
-      month: "short" 
-    })}`);
+    toast.success(
+      `Rescheduled "${draggedEvent.title}" to ${newDate.toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })}`,
+    );
 
     // Persist to database if source info is available
     if (draggedEvent.sourceTable && draggedEvent.sourceId && draggedEvent.sourceField) {
@@ -633,26 +716,26 @@ export default function CalendarPage() {
           console.error("Error persisting date change:", error);
           toast.error("Failed to save date change to database");
           // Revert on failure
-          setEvents(prevEvents =>
-            prevEvents.map(e => {
+          setEvents((prevEvents) =>
+            prevEvents.map((e) => {
               if (e.id === eventId) {
                 return { ...e, date: draggedEvent.date };
               }
               return e;
-            })
+            }),
           );
         }
       } catch (err) {
         console.error("Error persisting date change:", err);
         toast.error("Failed to save date change to database");
         // Revert on failure
-        setEvents(prevEvents =>
-          prevEvents.map(e => {
+        setEvents((prevEvents) =>
+          prevEvents.map((e) => {
             if (e.id === eventId) {
               return { ...e, date: draggedEvent.date };
             }
             return e;
-          })
+          }),
         );
       }
     }
@@ -672,7 +755,7 @@ export default function CalendarPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50"
@@ -696,15 +779,11 @@ export default function CalendarPage() {
         </div>
       </motion.header>
 
-      <DndContext 
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <main className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Calendar Grid */}
-            <motion.div 
+            <motion.div
               className="lg:col-span-2"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -728,8 +807,11 @@ export default function CalendarPage() {
                 <CardContent>
                   {/* Day Headers */}
                   <div className="grid grid-cols-7 gap-1 mb-2">
-                    {dayNames.map(day => (
-                      <div key={day} className="text-center text-sm font-medium text-slate-500 py-2">
+                    {dayNames.map((day) => (
+                      <div
+                        key={day}
+                        className="text-center text-sm font-medium text-slate-500 py-2"
+                      >
                         {day}
                       </div>
                     ))}
@@ -792,7 +874,7 @@ export default function CalendarPage() {
             </motion.div>
 
             {/* Sidebar */}
-            <motion.div 
+            <motion.div
               className="space-y-6"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -810,10 +892,10 @@ export default function CalendarPage() {
                     <Card className="border-0 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 bg-white/70 dark:bg-slate-900/70 backdrop-blur">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-lg">
-                          {selectedDate.toLocaleDateString("en-GB", { 
+                          {selectedDate.toLocaleDateString("en-GB", {
                             weekday: "long",
-                            day: "numeric", 
-                            month: "long" 
+                            day: "numeric",
+                            month: "long",
                           })}
                         </CardTitle>
                       </CardHeader>
@@ -822,7 +904,7 @@ export default function CalendarPage() {
                           <p className="text-slate-500 text-sm">No events on this day</p>
                         ) : (
                           <div className="space-y-3">
-                            {selectedDateEvents.map(event => (
+                            {selectedDateEvents.map((event) => (
                               <DraggableEvent key={event.id} event={event} />
                             ))}
                           </div>
@@ -843,11 +925,13 @@ export default function CalendarPage() {
                     <p className="text-slate-500 text-sm">No upcoming events</p>
                   ) : (
                     <div className="space-y-3">
-                      {upcomingEvents.map(event => {
+                      {upcomingEvents.map((event) => {
                         const config = eventConfig[event.type];
                         const Icon = config.icon;
-                        const daysUntil = Math.ceil((event.date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                        
+                        const daysUntil = Math.ceil(
+                          (event.date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+                        );
+
                         return (
                           <motion.div
                             key={event.id}
@@ -858,7 +942,9 @@ export default function CalendarPage() {
                               setSelectedDate(new Date(event.date));
                             }}
                           >
-                            <div className={`w-8 h-8 rounded-lg ${config.bgColor} flex items-center justify-center`}>
+                            <div
+                              className={`w-8 h-8 rounded-lg ${config.bgColor} flex items-center justify-center`}
+                            >
                               <Icon className={`w-4 h-4 ${config.color}`} />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -866,9 +952,11 @@ export default function CalendarPage() {
                                 {event.title}
                               </p>
                               <p className="text-xs text-slate-500">
-                                {daysUntil === 0 ? "Today" : 
-                                 daysUntil === 1 ? "Tomorrow" : 
-                                 `In ${daysUntil} days`}
+                                {daysUntil === 0
+                                  ? "Today"
+                                  : daysUntil === 1
+                                    ? "Tomorrow"
+                                    : `In ${daysUntil} days`}
                                 {event.property && ` • ${event.property}`}
                               </p>
                             </div>
@@ -887,9 +975,7 @@ export default function CalendarPage() {
         </main>
 
         {/* Drag Overlay */}
-        <DragOverlay>
-          {activeEvent && <DraggableEvent event={activeEvent} isOverlay />}
-        </DragOverlay>
+        <DragOverlay>{activeEvent && <DraggableEvent event={activeEvent} isOverlay />}</DragOverlay>
       </DndContext>
     </div>
   );

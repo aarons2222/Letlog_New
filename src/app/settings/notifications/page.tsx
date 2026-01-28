@@ -9,9 +9,18 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowLeft, Bell, Mail, Home, Wrench, FileText, 
-  AlertTriangle, CreditCard, MessageSquare, Star, Save
+import {
+  ArrowLeft,
+  Bell,
+  Mail,
+  Home,
+  Wrench,
+  FileText,
+  AlertTriangle,
+  CreditCard,
+  MessageSquare,
+  Star,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,24 +29,24 @@ interface NotificationPreferences {
   tenancy_reminders: boolean;
   rent_reminders: boolean;
   property_updates: boolean;
-  
+
   // Maintenance
   issue_updates: boolean;
   quote_notifications: boolean;
   job_completion: boolean;
-  
+
   // Compliance
   compliance_alerts: boolean;
   compliance_reminders: boolean;
-  
+
   // Documents
   document_uploads: boolean;
   document_shares: boolean;
-  
+
   // Communication
   messages: boolean;
   review_requests: boolean;
-  
+
   // Marketing
   tips_and_updates: boolean;
   product_news: boolean;
@@ -66,9 +75,21 @@ const notificationGroups = [
     icon: Home,
     color: "blue",
     items: [
-      { key: "tenancy_reminders", label: "Tenancy start/end reminders", description: "Get notified before tenancies begin or end" },
-      { key: "rent_reminders", label: "Rent payment reminders", description: "Reminders for upcoming and overdue payments" },
-      { key: "property_updates", label: "Property updates", description: "Changes to your properties or tenancies" },
+      {
+        key: "tenancy_reminders",
+        label: "Tenancy start/end reminders",
+        description: "Get notified before tenancies begin or end",
+      },
+      {
+        key: "rent_reminders",
+        label: "Rent payment reminders",
+        description: "Reminders for upcoming and overdue payments",
+      },
+      {
+        key: "property_updates",
+        label: "Property updates",
+        description: "Changes to your properties or tenancies",
+      },
     ],
   },
   {
@@ -76,8 +97,16 @@ const notificationGroups = [
     icon: Wrench,
     color: "orange",
     items: [
-      { key: "issue_updates", label: "Issue status updates", description: "When maintenance issues are updated or resolved" },
-      { key: "quote_notifications", label: "Quote notifications", description: "New quotes from contractors" },
+      {
+        key: "issue_updates",
+        label: "Issue status updates",
+        description: "When maintenance issues are updated or resolved",
+      },
+      {
+        key: "quote_notifications",
+        label: "Quote notifications",
+        description: "New quotes from contractors",
+      },
       { key: "job_completion", label: "Job completion", description: "When work is completed" },
     ],
   },
@@ -86,8 +115,16 @@ const notificationGroups = [
     icon: AlertTriangle,
     color: "red",
     items: [
-      { key: "compliance_alerts", label: "Expiry alerts", description: "When certificates are about to expire or have expired" },
-      { key: "compliance_reminders", label: "Renewal reminders", description: "Reminders to renew certificates" },
+      {
+        key: "compliance_alerts",
+        label: "Expiry alerts",
+        description: "When certificates are about to expire or have expired",
+      },
+      {
+        key: "compliance_reminders",
+        label: "Renewal reminders",
+        description: "Reminders to renew certificates",
+      },
     ],
   },
   {
@@ -95,8 +132,16 @@ const notificationGroups = [
     icon: FileText,
     color: "green",
     items: [
-      { key: "document_uploads", label: "Document uploads", description: "When new documents are added" },
-      { key: "document_shares", label: "Document shares", description: "When someone shares a document with you" },
+      {
+        key: "document_uploads",
+        label: "Document uploads",
+        description: "When new documents are added",
+      },
+      {
+        key: "document_shares",
+        label: "Document shares",
+        description: "When someone shares a document with you",
+      },
     ],
   },
   {
@@ -105,7 +150,11 @@ const notificationGroups = [
     color: "purple",
     items: [
       { key: "messages", label: "New messages", description: "When you receive a message" },
-      { key: "review_requests", label: "Review requests", description: "Requests to leave reviews after jobs" },
+      {
+        key: "review_requests",
+        label: "Review requests",
+        description: "Requests to leave reviews after jobs",
+      },
     ],
   },
   {
@@ -113,8 +162,16 @@ const notificationGroups = [
     icon: Star,
     color: "yellow",
     items: [
-      { key: "tips_and_updates", label: "Tips & best practices", description: "Helpful tips for property management" },
-      { key: "product_news", label: "Product updates", description: "New features and improvements" },
+      {
+        key: "tips_and_updates",
+        label: "Tips & best practices",
+        description: "Helpful tips for property management",
+      },
+      {
+        key: "product_news",
+        label: "Product updates",
+        description: "New features and improvements",
+      },
     ],
   },
 ];
@@ -128,32 +185,34 @@ export default function NotificationSettingsPage() {
   useEffect(() => {
     const fetchPreferences = async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         router.push("/login");
         return;
       }
-      
+
       // Fetch notification preferences from profile or a separate table
       const { data: profile } = await supabase
         .from("profiles")
         .select("notification_preferences")
         .eq("id", user.id)
         .single();
-      
+
       if (profile?.notification_preferences) {
         setPreferences({ ...defaultPreferences, ...profile.notification_preferences });
       }
-      
+
       setIsLoading(false);
     };
-    
+
     fetchPreferences();
   }, [router]);
 
   const handleToggle = (key: keyof NotificationPreferences) => {
-    setPreferences(prev => ({
+    setPreferences((prev) => ({
       ...prev,
       [key]: !prev[key],
     }));
@@ -164,8 +223,10 @@ export default function NotificationSettingsPage() {
 
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) throw new Error("Not authenticated");
 
       const { error } = await supabase
@@ -187,10 +248,15 @@ export default function NotificationSettingsPage() {
   };
 
   const handleEnableAll = () => {
-    setPreferences(Object.keys(preferences).reduce((acc, key) => ({
-      ...acc,
-      [key]: true,
-    }), {} as NotificationPreferences));
+    setPreferences(
+      Object.keys(preferences).reduce(
+        (acc, key) => ({
+          ...acc,
+          [key]: true,
+        }),
+        {} as NotificationPreferences,
+      ),
+    );
   };
 
   const handleDisableNonEssential = () => {
@@ -217,7 +283,7 @@ export default function NotificationSettingsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50"
@@ -232,7 +298,9 @@ export default function NotificationSettingsPage() {
             </Link>
             <div className="flex items-center gap-2">
               <Bell className="w-6 h-6 text-blue-500" />
-              <h1 className="text-xl font-bold text-slate-800 dark:text-white">Email Notifications</h1>
+              <h1 className="text-xl font-bold text-slate-800 dark:text-white">
+                Email Notifications
+              </h1>
             </div>
           </div>
           <Button onClick={handleSave} disabled={isSaving} className="gap-2">
@@ -289,7 +357,9 @@ export default function NotificationSettingsPage() {
               <Card className="border-0 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 bg-white/70 dark:bg-slate-900/70 backdrop-blur">
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full ${colorClasses[group.color]} flex items-center justify-center`}>
+                    <div
+                      className={`w-10 h-10 rounded-full ${colorClasses[group.color]} flex items-center justify-center`}
+                    >
                       <Icon className="w-5 h-5" />
                     </div>
                     <CardTitle className="text-lg">{group.title}</CardTitle>
@@ -297,8 +367,8 @@ export default function NotificationSettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {group.items.map((item) => (
-                    <div 
-                      key={item.key} 
+                    <div
+                      key={item.key}
                       className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                     >
                       <div className="space-y-0.5">
@@ -310,7 +380,9 @@ export default function NotificationSettingsPage() {
                       <Switch
                         id={item.key}
                         checked={preferences[item.key as keyof NotificationPreferences]}
-                        onCheckedChange={() => handleToggle(item.key as keyof NotificationPreferences)}
+                        onCheckedChange={() =>
+                          handleToggle(item.key as keyof NotificationPreferences)
+                        }
                       />
                     </div>
                   ))}

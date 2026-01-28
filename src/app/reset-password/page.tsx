@@ -25,14 +25,16 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const checkSession = async () => {
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (session) {
         setIsValidSession(true);
       }
       setIsChecking(false);
     };
-    
+
     checkSession();
   }, []);
 
@@ -61,7 +63,7 @@ export default function ResetPasswordPage() {
 
       setIsSuccess(true);
       toast.success("Password updated successfully!");
-      
+
       setTimeout(() => {
         router.push("/dashboard");
       }, 2000);
@@ -93,9 +95,17 @@ export default function ResetPasswordPage() {
           className="w-full max-w-md text-center"
         >
           <Link href="/" className="inline-flex items-center gap-3 mb-12">
-            <Image src="/logo.svg" alt="LetLog" width={40} height={40} className="rounded-xl shadow-lg" />
+            <Image
+              src="/logo.svg"
+              alt="LetLog"
+              width={40}
+              height={40}
+              className="rounded-xl shadow-lg"
+            />
             <span className="font-semibold text-xl tracking-tight">
-              <span className="bg-gradient-to-r from-rose-500 to-orange-500 bg-clip-text text-transparent">Let</span>
+              <span className="bg-gradient-to-r from-rose-500 to-orange-500 bg-clip-text text-transparent">
+                Let
+              </span>
               <span>Log</span>
             </span>
           </Link>
@@ -127,9 +137,17 @@ export default function ResetPasswordPage() {
         className="w-full max-w-md"
       >
         <Link href="/" className="inline-flex items-center gap-3 mb-12">
-          <Image src="/logo.svg" alt="LetLog" width={40} height={40} className="rounded-xl shadow-lg" />
+          <Image
+            src="/logo.svg"
+            alt="LetLog"
+            width={40}
+            height={40}
+            className="rounded-xl shadow-lg"
+          />
           <span className="font-semibold text-xl tracking-tight">
-            <span className="bg-gradient-to-r from-rose-500 to-orange-500 bg-clip-text text-transparent">Let</span>
+            <span className="bg-gradient-to-r from-rose-500 to-orange-500 bg-clip-text text-transparent">
+              Let
+            </span>
             <span>Log</span>
           </span>
         </Link>
@@ -150,23 +168,19 @@ export default function ResetPasswordPage() {
               </div>
             </motion.div>
             <h1 className="text-2xl font-bold text-slate-900 mb-3">Password updated!</h1>
-            <p className="text-slate-600 mb-2">
-              Your password has been changed successfully.
-            </p>
-            <p className="text-sm text-slate-500">
-              Redirecting to dashboard...
-            </p>
+            <p className="text-slate-600 mb-2">Your password has been changed successfully.</p>
+            <p className="text-sm text-slate-500">Redirecting to dashboard...</p>
           </motion.div>
         ) : (
           <>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Set new password</h1>
-            <p className="text-slate-600 mb-8">
-              Choose a strong password for your account
-            </p>
+            <p className="text-slate-600 mb-8">Choose a strong password for your account</p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-700 font-medium">New Password</Label>
+                <Label htmlFor="password" className="text-slate-700 font-medium">
+                  New Password
+                </Label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
@@ -191,7 +205,9 @@ export default function ResetPasswordPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-slate-700 font-medium">Confirm Password</Label>
+                <Label htmlFor="confirmPassword" className="text-slate-700 font-medium">
+                  Confirm Password
+                </Label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
@@ -206,8 +222,8 @@ export default function ResetPasswordPage() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-base font-medium shadow-lg shadow-slate-900/10"
                 disabled={isLoading}
               >

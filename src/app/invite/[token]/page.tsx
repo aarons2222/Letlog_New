@@ -31,11 +31,11 @@ export default function InvitePage() {
   const params = useParams();
   const router = useRouter();
   const token = params.token as string;
-  
+
   const [loading, setLoading] = useState(true);
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -49,16 +49,18 @@ export default function InvitePage() {
       try {
         // Fetch invitation by token with tenancy and property details
         const { data, error: fetchError } = await supabase
-          .from('tenant_invitations')
-          .select(`
+          .from("tenant_invitations")
+          .select(
+            `
             *,
             tenancies(
               id,
               properties(address_line_1, address_line_2, city, postcode, property_type, bedrooms)
             ),
             profiles:invited_by(full_name)
-          `)
-          .eq('token', token)
+          `,
+          )
+          .eq("token", token)
           .single();
 
         if (fetchError || !data) {
@@ -77,7 +79,7 @@ export default function InvitePage() {
         }
 
         // Check if already accepted
-        if (data.status === 'accepted') {
+        if (data.status === "accepted") {
           setError("This invitation has already been accepted.");
           setInvitation(null);
           setLoading(false);
@@ -86,68 +88,71 @@ export default function InvitePage() {
 
         const prop = data.tenancies?.properties;
         const address = prop
-          ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode].filter(Boolean).join(', ')
-          : 'Property';
+          ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+              .filter(Boolean)
+              .join(", ")
+          : "Property";
 
         setInvitation({
           id: data.id,
           tenancyId: data.tenancy_id,
           email: data.email,
-          invitedBy: data.profiles?.full_name || 'Your landlord',
-          landlordCompany: 'Property Management',
+          invitedBy: data.profiles?.full_name || "Your landlord",
+          landlordCompany: "Property Management",
           property: {
             address,
-            type: prop?.property_type || 'flat',
+            type: prop?.property_type || "flat",
             bedrooms: prop?.bedrooms || 0,
           },
           status: data.status,
-          expiresAt: data.expires_at || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          expiresAt:
+            data.expires_at || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         });
         setError(null);
       } catch (err) {
-        console.error('Error fetching invitation:', err);
+        console.error("Error fetching invitation:", err);
         setError("Failed to load invitation.");
         setInvitation(null);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchInvitation();
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!fullName.trim()) {
       toast.error("Please enter your name");
       return;
     }
-    
+
     if (password.length < 8) {
       toast.error("Password must be at least 8 characters");
       return;
     }
-    
+
     if (password !== confirmPassword) {
       toast.error("Passwords don't match");
       return;
     }
 
     if (!invitation) return;
-    
+
     setSubmitting(true);
     const supabase = createClient();
 
     try {
       // Create account via Supabase Auth
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: invitation?.email || '',
+        email: invitation?.email || "",
         password,
         options: {
           data: {
             full_name: fullName,
-            role: 'tenant',
+            role: "tenant",
           },
         },
       });
@@ -161,31 +166,29 @@ export default function InvitePage() {
       // Mark invitation as accepted
       if (invitation) {
         await supabase
-          .from('tenant_invitations')
-          .update({ status: 'accepted', accepted_at: new Date().toISOString() })
-          .eq('id', invitation.id);
+          .from("tenant_invitations")
+          .update({ status: "accepted", accepted_at: new Date().toISOString() })
+          .eq("id", invitation.id);
 
         // Add tenant to tenancy if we have a user ID
         if (authData.user) {
-          await supabase
-            .from('tenancy_tenants')
-            .insert({
-              tenancy_id: invitation.tenancyId,
-              tenant_id: authData.user.id,
-              is_lead_tenant: false,
-            });
+          await supabase.from("tenancy_tenants").insert({
+            tenancy_id: invitation.tenancyId,
+            tenant_id: authData.user.id,
+            is_lead_tenant: false,
+          });
         }
       }
 
       toast.success("Account created!", {
         description: "Welcome to LetLog. Redirecting to your dashboard...",
       });
-      
+
       setTimeout(() => {
         router.push("/dashboard");
       }, 1500);
     } catch (err) {
-      console.error('Error creating account:', err);
+      console.error("Error creating account:", err);
       toast.error("Failed to create account");
       setSubmitting(false);
     }
@@ -236,7 +239,9 @@ export default function InvitePage() {
               <span className="text-white font-bold text-xl">L</span>
             </div>
             <span className="font-semibold text-2xl tracking-tight">
-              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">Let</span>
+              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">
+                Let
+              </span>
               <span>Log</span>
             </span>
           </Link>
@@ -252,7 +257,7 @@ export default function InvitePage() {
               {invitation?.invitedBy} has invited you to join as a tenant
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-6">
             {/* Property Info */}
             <div className="p-4 bg-slate-50 rounded-xl">
@@ -284,7 +289,7 @@ export default function InvitePage() {
                   className="rounded-xl bg-slate-50"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input
@@ -297,7 +302,7 @@ export default function InvitePage() {
                   className="rounded-xl"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password">Create Password</Label>
                 <Input
@@ -312,7 +317,7 @@ export default function InvitePage() {
                 />
                 <p className="text-xs text-slate-500">Minimum 8 characters</p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
@@ -326,8 +331,8 @@ export default function InvitePage() {
                 />
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full rounded-xl bg-slate-900 hover:bg-slate-800 h-12 text-base"
                 disabled={submitting}
               >
@@ -365,8 +370,13 @@ export default function InvitePage() {
 
             <p className="text-xs text-slate-500 text-center">
               By creating an account, you agree to our{" "}
-              <Link href="/terms" className="underline hover:text-slate-700">Terms</Link> and{" "}
-              <Link href="/privacy" className="underline hover:text-slate-700">Privacy Policy</Link>
+              <Link href="/terms" className="underline hover:text-slate-700">
+                Terms
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="underline hover:text-slate-700">
+                Privacy Policy
+              </Link>
             </p>
           </CardContent>
         </Card>

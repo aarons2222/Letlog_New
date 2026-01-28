@@ -19,9 +19,20 @@ import {
 } from "@/components/ui/dialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowLeft, User, Mail, Lock, Trash2, Shield, 
-  CheckCircle, AlertTriangle, Eye, EyeOff, Save, Bell, ChevronRight
+import {
+  ArrowLeft,
+  User,
+  Mail,
+  Lock,
+  Trash2,
+  Shield,
+  CheckCircle,
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  Save,
+  Bell,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -29,19 +40,19 @@ export default function SettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Profile form
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  
+
   // Password form
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  
+
   // Delete account
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -50,30 +61,32 @@ export default function SettingsPage() {
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         router.push("/login");
         return;
       }
-      
+
       setUser(user);
-      
+
       // Fetch profile data
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
-      
+
       if (profile) {
         setFullName(profile.full_name || "");
         setPhone(profile.phone || "");
       }
-      
+
       setIsLoading(false);
     };
-    
+
     fetchUser();
   }, [router]);
 
@@ -146,18 +159,15 @@ export default function SettingsPage() {
 
     try {
       const supabase = createClient();
-      
+
       // Delete user data (cascade should handle related records)
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", user.id);
+      const { error: profileError } = await supabase.from("profiles").delete().eq("id", user.id);
 
       if (profileError) throw profileError;
 
       // Sign out
       await supabase.auth.signOut();
-      
+
       toast.success("Account deleted. We're sorry to see you go.");
       router.push("/");
     } catch (error: any) {
@@ -183,7 +193,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50"
@@ -206,10 +216,7 @@ export default function SettingsPage() {
 
       <main className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
         {/* Notification Settings Link */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Link href="/settings/notifications">
             <Card className="border-0 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 bg-white/70 dark:bg-slate-900/70 backdrop-blur cursor-pointer hover:shadow-2xl transition-shadow">
               <CardContent className="p-4">
@@ -218,7 +225,9 @@ export default function SettingsPage() {
                     <Bell className="w-6 h-6 text-purple-600" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-slate-800 dark:text-white">Email Notifications</h3>
+                    <h3 className="font-semibold text-slate-800 dark:text-white">
+                      Email Notifications
+                    </h3>
                     <p className="text-sm text-slate-500">Manage what emails you receive</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-400" />
@@ -363,8 +372,8 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isChangingPassword || !newPassword || !confirmPassword}
                   className="gap-2"
                 >
@@ -405,7 +414,8 @@ export default function SettingsPage() {
               <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-900/30">
                 <h4 className="font-medium text-red-700 dark:text-red-400 mb-2">Delete Account</h4>
                 <p className="text-sm text-red-600/80 dark:text-red-400/80 mb-4">
-                  Once you delete your account, there is no going back. All your data, including properties, tenancies, and documents will be permanently deleted.
+                  Once you delete your account, there is no going back. All your data, including
+                  properties, tenancies, and documents will be permanently deleted.
                 </p>
                 <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                   <DialogTrigger asChild>
@@ -418,12 +428,17 @@ export default function SettingsPage() {
                     <DialogHeader>
                       <DialogTitle className="text-red-600">Delete Account</DialogTitle>
                       <DialogDescription>
-                        This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+                        This action cannot be undone. This will permanently delete your account and
+                        remove all your data from our servers.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                       <Label htmlFor="deleteConfirm" className="text-sm font-medium">
-                        Type <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded">DELETE</span> to confirm
+                        Type{" "}
+                        <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded">
+                          DELETE
+                        </span>{" "}
+                        to confirm
                       </Label>
                       <Input
                         id="deleteConfirm"
@@ -438,8 +453,8 @@ export default function SettingsPage() {
                       <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
                         Cancel
                       </Button>
-                      <Button 
-                        variant="destructive" 
+                      <Button
+                        variant="destructive"
                         onClick={handleDeleteAccount}
                         disabled={deleteConfirmation !== "DELETE" || isDeleting}
                       >

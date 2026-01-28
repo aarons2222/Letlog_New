@@ -1,7 +1,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Key, Wrench, FileCheck, Shield, Bell, Smartphone, ArrowRight, Star, Home } from "lucide-react";
+import {
+  Key,
+  Wrench,
+  FileCheck,
+  Shield,
+  Bell,
+  Smartphone,
+  ArrowRight,
+  Star,
+  Home,
+} from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -10,23 +20,44 @@ export default function HomePage() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/logo.svg" alt="LetLog" width={40} height={40} className="rounded-xl shadow-lg" />
+            <Image
+              src="/logo.svg"
+              alt="LetLog"
+              width={40}
+              height={40}
+              className="rounded-xl shadow-lg"
+            />
             <span className="font-semibold text-xl tracking-tight">
-              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">Let</span>
+              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">
+                Let
+              </span>
               <span>Log</span>
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
-            <Link href="#features" className="text-slate-600 hover:text-slate-900 transition-colors">Features</Link>
-            <Link href="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
-            <Link href="/blog" className="text-slate-600 hover:text-slate-900 transition-colors">Blog</Link>
+            <Link
+              href="#features"
+              className="text-slate-600 hover:text-slate-900 transition-colors"
+            >
+              Features
+            </Link>
+            <Link href="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">
+              Pricing
+            </Link>
+            <Link href="/blog" className="text-slate-600 hover:text-slate-900 transition-colors">
+              Blog
+            </Link>
           </nav>
           <div className="flex items-center gap-3">
             <Link href="/login">
-              <Button variant="ghost" className="rounded-full px-5">Sign In</Button>
+              <Button variant="ghost" className="rounded-full px-5">
+                Sign In
+              </Button>
             </Link>
             <Link href="/signup">
-              <Button className="rounded-full px-5 bg-slate-900 hover:bg-slate-800">Get Started</Button>
+              <Button className="rounded-full px-5 bg-slate-900 hover:bg-slate-800">
+                Get Started
+              </Button>
             </Link>
           </div>
         </div>
@@ -44,18 +75,25 @@ export default function HomePage() {
               </span>
             </h1>
             <p className="mt-8 text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto">
-              Gas safety expiring? Rent due? Leak reported at 11pm? LetLog keeps everything in one place — 
-              so you never miss a deadline, lose a document, or chase a contractor again.
+              Gas safety expiring? Rent due? Leak reported at 11pm? LetLog keeps everything in one
+              place — so you never miss a deadline, lose a document, or chase a contractor again.
             </p>
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/signup">
-                <Button size="lg" className="rounded-full px-8 py-6 text-lg bg-slate-900 hover:bg-slate-800 shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:shadow-slate-900/20 transition-all">
+                <Button
+                  size="lg"
+                  className="rounded-full px-8 py-6 text-lg bg-slate-900 hover:bg-slate-800 shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:shadow-slate-900/20 transition-all"
+                >
                   Start Free Trial
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
               <Link href="#demo">
-                <Button variant="ghost" size="lg" className="rounded-full px-8 py-6 text-lg text-slate-600 hover:text-slate-900">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="rounded-full px-8 py-6 text-lg text-slate-600 hover:text-slate-900"
+                >
                   Watch Demo
                 </Button>
               </Link>
@@ -84,12 +122,20 @@ export default function HomePage() {
                       { label: "Reminders", value: "2", icon: Shield, color: "blue" },
                     ].map((stat, i) => (
                       <div key={i} className="bg-slate-800/50 rounded-xl p-4 md:p-5">
-                        <stat.icon className={`w-5 h-5 mb-3 ${
-                          stat.color === 'terracotta' ? 'text-[#E8998D]' :
-                          stat.color === 'emerald' ? 'text-emerald-400' :
-                          stat.color === 'amber' ? 'text-amber-400' : 'text-blue-400'
-                        }`} />
-                        <div className="text-2xl md:text-3xl font-bold text-white">{stat.value}</div>
+                        <stat.icon
+                          className={`w-5 h-5 mb-3 ${
+                            stat.color === "terracotta"
+                              ? "text-[#E8998D]"
+                              : stat.color === "emerald"
+                                ? "text-emerald-400"
+                                : stat.color === "amber"
+                                  ? "text-amber-400"
+                                  : "text-blue-400"
+                          }`}
+                        />
+                        <div className="text-2xl md:text-3xl font-bold text-white">
+                          {stat.value}
+                        </div>
                         <div className="text-slate-400 text-sm mt-1">{stat.label}</div>
                       </div>
                     ))}
@@ -105,8 +151,12 @@ export default function HomePage() {
       <section className="py-32">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900">Everyone wins with LetLog</h2>
-            <p className="text-slate-600 mt-4 text-lg">Landlords save time. Tenants get heard. Contractors get paid.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900">
+              Everyone wins with LetLog
+            </h2>
+            <p className="text-slate-600 mt-4 text-lg">
+              Landlords save time. Tenants get heard. Contractors get paid.
+            </p>
           </div>
           <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
             {[
@@ -115,46 +165,82 @@ export default function HomePage() {
                 title: "Landlords",
                 desc: "Finally, everything in one place",
                 color: "terracotta",
-                features: ["Track every property, tenant & lease", "Never miss a compliance deadline", "Share documents securely", "Get competitive repair quotes"],
+                features: [
+                  "Track every property, tenant & lease",
+                  "Never miss a compliance deadline",
+                  "Share documents securely",
+                  "Get competitive repair quotes",
+                ],
               },
               {
                 icon: Key,
-                title: "Tenants", 
+                title: "Tenants",
                 desc: "No more ignored emails",
                 color: "emerald",
-                features: ["Report issues with photos in seconds", "Track when repairs are happening", "Access your tenancy documents 24/7", "See exactly what's being done"],
+                features: [
+                  "Report issues with photos in seconds",
+                  "Track when repairs are happening",
+                  "Access your tenancy documents 24/7",
+                  "See exactly what's being done",
+                ],
               },
               {
                 icon: Wrench,
                 title: "Contractors",
                 desc: "More jobs, less hassle",
                 color: "amber",
-                features: ["Get notified of local jobs instantly", "Submit quotes in one click", "Build your reputation with reviews", "Get paid faster"],
+                features: [
+                  "Get notified of local jobs instantly",
+                  "Submit quotes in one click",
+                  "Build your reputation with reviews",
+                  "Get paid faster",
+                ],
               },
             ].map((card, i) => (
               <div
                 key={i}
                 className="group relative bg-white rounded-[24px] p-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:-translate-y-1"
               >
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${
-                  card.color === 'terracotta' ? 'bg-[#F5E6E3]' :
-                  card.color === 'emerald' ? 'bg-emerald-100' : 'bg-amber-100'
-                }`}>
-                  <card.icon className={`w-7 h-7 ${
-                    card.color === 'terracotta' ? 'text-[#C17B6E]' :
-                    card.color === 'emerald' ? 'text-emerald-600' : 'text-amber-600'
-                  }`} />
+                <div
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${
+                    card.color === "terracotta"
+                      ? "bg-[#F5E6E3]"
+                      : card.color === "emerald"
+                        ? "bg-emerald-100"
+                        : "bg-amber-100"
+                  }`}
+                >
+                  <card.icon
+                    className={`w-7 h-7 ${
+                      card.color === "terracotta"
+                        ? "text-[#C17B6E]"
+                        : card.color === "emerald"
+                          ? "text-emerald-600"
+                          : "text-amber-600"
+                    }`}
+                  />
                 </div>
                 <h3 className="text-xl font-semibold text-slate-900">{card.title}</h3>
                 <p className="text-slate-500 mt-2">{card.desc}</p>
                 <ul className="mt-6 space-y-3">
                   {card.features.map((feature, j) => (
                     <li key={j} className="flex items-center gap-3 text-slate-600">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                        card.color === 'terracotta' ? 'bg-[#F5E6E3] text-[#C17B6E]' :
-                        card.color === 'emerald' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
-                      }`}>
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                          card.color === "terracotta"
+                            ? "bg-[#F5E6E3] text-[#C17B6E]"
+                            : card.color === "emerald"
+                              ? "bg-emerald-100 text-emerald-600"
+                              : "bg-amber-100 text-amber-600"
+                        }`}
+                      >
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        >
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
@@ -177,7 +263,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">
             {[
               "Scrolling through WhatsApp to find that gas certificate",
-              "Chasing tenants for rent with awkward texts", 
+              "Chasing tenants for rent with awkward texts",
               "Scrambling to book a gas check before it expires",
               "Calling three contractors for one leaky tap",
             ].map((pain, i) => (
@@ -197,17 +283,45 @@ export default function HomePage() {
       <section id="features" className="py-32 bg-[#FDFBF9]">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900">Everything in one place</h2>
-            <p className="text-slate-600 mt-4 text-lg">No more spreadsheets. No more WhatsApp chaos. Just clarity.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900">
+              Everything in one place
+            </h2>
+            <p className="text-slate-600 mt-4 text-lg">
+              No more spreadsheets. No more WhatsApp chaos. Just clarity.
+            </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
-              { icon: FileCheck, title: "Tenancy Management", desc: "Every lease, deposit, and tenant detail — organised and searchable. Know exactly what's happening across your portfolio." },
-              { icon: Shield, title: "Document Vault", desc: "Upload once, share forever. Tenancy agreements, certificates, inventories — always accessible, always secure." },
-              { icon: Bell, title: "Smart Issue Reporting", desc: "Tenants report problems with photos. You see them instantly. No more 'I texted you last week about the boiler.'" },
-              { icon: Wrench, title: "Contractor Marketplace", desc: "Post a job, get quotes from verified local tradespeople, pick the best one. Simple." },
-              { icon: FileCheck, title: "Compliance Autopilot", desc: "Gas safety, EICR, EPC — get reminded before deadlines, not after. Stay legal without the stress." },
-              { icon: Smartphone, title: "Works Everywhere", desc: "Desktop, tablet, phone. Check your properties from the sofa, the office, or the beach." },
+              {
+                icon: FileCheck,
+                title: "Tenancy Management",
+                desc: "Every lease, deposit, and tenant detail — organised and searchable. Know exactly what's happening across your portfolio.",
+              },
+              {
+                icon: Shield,
+                title: "Document Vault",
+                desc: "Upload once, share forever. Tenancy agreements, certificates, inventories — always accessible, always secure.",
+              },
+              {
+                icon: Bell,
+                title: "Smart Issue Reporting",
+                desc: "Tenants report problems with photos. You see them instantly. No more 'I texted you last week about the boiler.'",
+              },
+              {
+                icon: Wrench,
+                title: "Contractor Marketplace",
+                desc: "Post a job, get quotes from verified local tradespeople, pick the best one. Simple.",
+              },
+              {
+                icon: FileCheck,
+                title: "Compliance Autopilot",
+                desc: "Gas safety, EICR, EPC — get reminded before deadlines, not after. Stay legal without the stress.",
+              },
+              {
+                icon: Smartphone,
+                title: "Works Everywhere",
+                desc: "Desktop, tablet, phone. Check your properties from the sofa, the office, or the beach.",
+              },
             ].map((feature, i) => (
               <div key={i} className="flex gap-5 group">
                 <div className="flex-shrink-0 w-12 h-12 bg-white rounded-[16px] shadow-[0_2px_8px_rgba(0,0,0,0.06)] flex items-center justify-center group-hover:shadow-[0_4px_16px_rgba(0,0,0,0.1)] transition-shadow duration-300">
@@ -236,7 +350,10 @@ export default function HomePage() {
                 Start your free trial today. No credit card required. Set up in under 5 minutes.
               </p>
               <Link href="/signup">
-                <Button size="lg" className="rounded-full px-8 py-6 text-lg bg-gradient-to-r from-[#E8998D] to-[#F4A261] text-white hover:opacity-90 shadow-xl shadow-[#E8998D]/20 hover:shadow-2xl hover:shadow-[#E8998D]/30 transition-all">
+                <Button
+                  size="lg"
+                  className="rounded-full px-8 py-6 text-lg bg-gradient-to-r from-[#E8998D] to-[#F4A261] text-white hover:opacity-90 shadow-xl shadow-[#E8998D]/20 hover:shadow-2xl hover:shadow-[#E8998D]/30 transition-all"
+                >
                   Get Started Free
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
@@ -254,7 +371,9 @@ export default function HomePage() {
               <Link href="/" className="flex items-center gap-3">
                 <Image src="/logo.svg" alt="LetLog" width={40} height={40} className="rounded-xl" />
                 <span className="font-semibold text-xl">
-                  <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">Let</span>
+                  <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">
+                    Let
+                  </span>
                   <span>Log</span>
                 </span>
               </Link>
@@ -266,23 +385,51 @@ export default function HomePage() {
               <div>
                 <h4 className="font-semibold text-slate-900 mb-4">Product</h4>
                 <ul className="space-y-3 text-slate-600">
-                  <li><Link href="#features" className="hover:text-slate-900 transition-colors">Features</Link></li>
-                  <li><Link href="/pricing" className="hover:text-slate-900 transition-colors">Pricing</Link></li>
-                  <li><Link href="/blog" className="hover:text-slate-900 transition-colors">Blog</Link></li>
+                  <li>
+                    <Link href="#features" className="hover:text-slate-900 transition-colors">
+                      Features
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/pricing" className="hover:text-slate-900 transition-colors">
+                      Pricing
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/blog" className="hover:text-slate-900 transition-colors">
+                      Blog
+                    </Link>
+                  </li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-semibold text-slate-900 mb-4">Support</h4>
                 <ul className="space-y-3 text-slate-600">
-                  <li><Link href="/contact" className="hover:text-slate-900 transition-colors">Contact</Link></li>
-                  <li><Link href="/help" className="hover:text-slate-900 transition-colors">Help Centre</Link></li>
+                  <li>
+                    <Link href="/contact" className="hover:text-slate-900 transition-colors">
+                      Contact
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/help" className="hover:text-slate-900 transition-colors">
+                      Help Centre
+                    </Link>
+                  </li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-semibold text-slate-900 mb-4">Legal</h4>
                 <ul className="space-y-3 text-slate-600">
-                  <li><Link href="/privacy" className="hover:text-slate-900 transition-colors">Privacy</Link></li>
-                  <li><Link href="/terms" className="hover:text-slate-900 transition-colors">Terms</Link></li>
+                  <li>
+                    <Link href="/privacy" className="hover:text-slate-900 transition-colors">
+                      Privacy
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/terms" className="hover:text-slate-900 transition-colors">
+                      Terms
+                    </Link>
+                  </li>
                 </ul>
               </div>
             </div>

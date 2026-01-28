@@ -1,6 +1,6 @@
 /**
  * LetLog Email Notification Service
- * 
+ *
  * Sends transactional emails for all key platform events.
  * Uses Supabase Auth emails + custom templates via Resend/SendGrid.
  */
@@ -8,7 +8,7 @@
 import { createClient } from "@/lib/supabase/server";
 
 // Email types for different notifications
-export type EmailType = 
+export type EmailType =
   | "booking_requested"
   | "booking_confirmed"
   | "booking_cancelled"
@@ -45,10 +45,13 @@ export interface NotificationPayload {
 }
 
 // Email templates with subject and body generators
-const emailTemplates: Record<EmailType, { 
-  subject: (data: any) => string; 
-  body: (data: any) => string;
-}> = {
+const emailTemplates: Record<
+  EmailType,
+  {
+    subject: (data: any) => string;
+    body: (data: any) => string;
+  }
+> = {
   // Booking notifications
   booking_requested: {
     subject: (d) => `New viewing request for ${d.propertyAddress}`,
@@ -83,7 +86,7 @@ const emailTemplates: Record<EmailType, {
       <h2>Viewing Cancelled</h2>
       <p>Hi ${d.recipientName},</p>
       <p>The viewing for <strong>${d.propertyAddress}</strong> on ${d.cancelledDate} has been cancelled.</p>
-      ${d.reason ? `<p>Reason: ${d.reason}</p>` : ''}
+      ${d.reason ? `<p>Reason: ${d.reason}</p>` : ""}
       <p><a href="${d.rescheduleUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">Reschedule</a></p>
     `,
   },
@@ -121,7 +124,7 @@ const emailTemplates: Record<EmailType, {
       <h2>Visit Completed ✅</h2>
       <p>Hi ${d.recipientName},</p>
       <p>The ${d.visitType} at ${d.propertyAddress} has been marked as completed.</p>
-      ${d.notes ? `<p><strong>Notes:</strong> ${d.notes}</p>` : ''}
+      ${d.notes ? `<p><strong>Notes:</strong> ${d.notes}</p>` : ""}
       <p><a href="${d.detailsUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">View Details</a></p>
     `,
   },
@@ -136,7 +139,7 @@ const emailTemplates: Record<EmailType, {
       <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
         <p style="margin: 0;"><strong>${d.issueTitle}</strong></p>
         <p style="margin: 8px 0 0 0;">Category: ${d.category}</p>
-        <p style="margin: 8px 0 0 0;">Priority: <span style="color: ${d.priority === 'urgent' ? '#dc2626' : '#f59e0b'};">${d.priority}</span></p>
+        <p style="margin: 8px 0 0 0;">Priority: <span style="color: ${d.priority === "urgent" ? "#dc2626" : "#f59e0b"};">${d.priority}</span></p>
         <p style="margin: 8px 0 0 0;">${d.description}</p>
       </div>
       <p><a href="${d.actionUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">View Issue</a></p>
@@ -150,7 +153,7 @@ const emailTemplates: Record<EmailType, {
       <p>The issue "${d.issueTitle}" has been updated:</p>
       <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
         <p style="margin: 0;">Status: <strong>${d.newStatus}</strong></p>
-        ${d.message ? `<p style="margin: 8px 0 0 0;">${d.message}</p>` : ''}
+        ${d.message ? `<p style="margin: 8px 0 0 0;">${d.message}</p>` : ""}
       </div>
       <p><a href="${d.actionUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">View Issue</a></p>
     `,
@@ -161,7 +164,7 @@ const emailTemplates: Record<EmailType, {
       <h2>Issue Resolved ✅</h2>
       <p>Hi ${d.recipientName},</p>
       <p>Great news! The issue "${d.issueTitle}" at ${d.propertyAddress} has been resolved.</p>
-      ${d.resolution ? `<p><strong>Resolution:</strong> ${d.resolution}</p>` : ''}
+      ${d.resolution ? `<p><strong>Resolution:</strong> ${d.resolution}</p>` : ""}
       <p><a href="${d.reviewUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">Rate the Service</a></p>
     `,
   },
@@ -202,7 +205,7 @@ const emailTemplates: Record<EmailType, {
       <h2>Quote Not Selected</h2>
       <p>Hi ${d.contractorName},</p>
       <p>Unfortunately, your quote for "${d.jobTitle}" was not selected this time.</p>
-      ${d.reason ? `<p>Feedback: ${d.reason}</p>` : ''}
+      ${d.reason ? `<p>Feedback: ${d.reason}</p>` : ""}
       <p><a href="${d.browseUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">Browse More Jobs</a></p>
     `,
   },
@@ -230,7 +233,7 @@ const emailTemplates: Record<EmailType, {
       <p><strong>${d.senderName}</strong> has shared a document with you:</p>
       <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
         <p style="margin: 0;"><strong>${d.documentName}</strong></p>
-        ${d.message ? `<p style="margin: 8px 0 0 0;">"${d.message}"</p>` : ''}
+        ${d.message ? `<p style="margin: 8px 0 0 0;">"${d.message}"</p>` : ""}
       </div>
       <p><a href="${d.viewUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">View Document</a></p>
     `,
@@ -276,7 +279,7 @@ const emailTemplates: Record<EmailType, {
         <p style="margin: 8px 0 0 0;">Amount: <strong>£${d.amount}</strong></p>
         <p style="margin: 8px 0 0 0;">Due date: <strong>${d.dueDate}</strong></p>
       </div>
-      ${d.paymentUrl ? `<p><a href="${d.paymentUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">Pay Now</a></p>` : ''}
+      ${d.paymentUrl ? `<p><a href="${d.paymentUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">Pay Now</a></p>` : ""}
     `,
   },
   rent_received: {
@@ -332,7 +335,7 @@ const emailTemplates: Record<EmailType, {
       <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
         <p style="margin: 0;">End date: <strong>${d.endDate}</strong></p>
       </div>
-      <p><a href="${d.actionUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">${d.isLandlord ? 'Discuss Renewal' : 'Request Renewal'}</a></p>
+      <p><a href="${d.actionUrl}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">${d.isLandlord ? "Discuss Renewal" : "Request Renewal"}</a></p>
     `,
   },
   tenancy_renewed: {
@@ -356,7 +359,7 @@ const emailTemplates: Record<EmailType, {
       <p>Hi ${d.recipientName},</p>
       <p><strong>${d.reviewerName}</strong> left you a review:</p>
       <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
-        <p style="margin: 0; font-size: 24px;">${'⭐'.repeat(d.rating)}</p>
+        <p style="margin: 0; font-size: 24px;">${"⭐".repeat(d.rating)}</p>
         <p style="margin: 8px 0 0 0;">"${d.reviewText}"</p>
         <p style="margin: 8px 0 0 0; color: #666;">— ${d.reviewerName}</p>
       </div>
@@ -463,7 +466,9 @@ function wrapEmail(content: string, previewText: string): string {
 /**
  * Send an email notification
  */
-export async function sendNotification(payload: NotificationPayload): Promise<{ success: boolean; error?: string }> {
+export async function sendNotification(
+  payload: NotificationPayload,
+): Promise<{ success: boolean; error?: string }> {
   const template = emailTemplates[payload.type];
   if (!template) {
     return { success: false, error: `Unknown email type: ${payload.type}` };
@@ -475,7 +480,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<{ 
 
   // In production, send via email service (Resend, SendGrid, etc.)
   // For now, we'll use Supabase Edge Function or log for development
-  
+
   console.log(`📧 Email notification [${payload.type}]`, {
     to: payload.to,
     subject,
@@ -506,30 +511,79 @@ export async function sendNotifications(payloads: NotificationPayload[]): Promis
  */
 export const notify = {
   // Issue notifications
-  issueReported: (data: { landlordEmail: string; landlordName: string; tenantName: string; propertyAddress: string; issueTitle: string; category: string; priority: string; description: string; actionUrl: string }) =>
-    sendNotification({ to: data.landlordEmail, type: "issue_reported", data }),
-  
-  issueUpdated: (data: { recipientEmail: string; recipientName: string; issueTitle: string; newStatus: string; message?: string; actionUrl: string }) =>
-    sendNotification({ to: data.recipientEmail, type: "issue_updated", data }),
+  issueReported: (data: {
+    landlordEmail: string;
+    landlordName: string;
+    tenantName: string;
+    propertyAddress: string;
+    issueTitle: string;
+    category: string;
+    priority: string;
+    description: string;
+    actionUrl: string;
+  }) => sendNotification({ to: data.landlordEmail, type: "issue_reported", data }),
+
+  issueUpdated: (data: {
+    recipientEmail: string;
+    recipientName: string;
+    issueTitle: string;
+    newStatus: string;
+    message?: string;
+    actionUrl: string;
+  }) => sendNotification({ to: data.recipientEmail, type: "issue_updated", data }),
 
   // Compliance notifications
-  complianceExpiring: (data: { landlordEmail: string; landlordName: string; propertyAddress: string; certificateType: string; expiryDate: string; daysRemaining: number; renewUrl: string }) =>
-    sendNotification({ to: data.landlordEmail, type: "compliance_expiring", data }),
-  
-  complianceExpired: (data: { landlordEmail: string; landlordName: string; propertyAddress: string; certificateType: string; expiryDate: string; renewUrl: string }) =>
-    sendNotification({ to: data.landlordEmail, type: "compliance_expired", data }),
+  complianceExpiring: (data: {
+    landlordEmail: string;
+    landlordName: string;
+    propertyAddress: string;
+    certificateType: string;
+    expiryDate: string;
+    daysRemaining: number;
+    renewUrl: string;
+  }) => sendNotification({ to: data.landlordEmail, type: "compliance_expiring", data }),
+
+  complianceExpired: (data: {
+    landlordEmail: string;
+    landlordName: string;
+    propertyAddress: string;
+    certificateType: string;
+    expiryDate: string;
+    renewUrl: string;
+  }) => sendNotification({ to: data.landlordEmail, type: "compliance_expired", data }),
 
   // Quote notifications
-  quoteReceived: (data: { landlordEmail: string; landlordName: string; contractorName: string; jobTitle: string; amount: number; availableFrom: string; contractorRating: number; actionUrl: string }) =>
-    sendNotification({ to: data.landlordEmail, type: "quote_received", data }),
+  quoteReceived: (data: {
+    landlordEmail: string;
+    landlordName: string;
+    contractorName: string;
+    jobTitle: string;
+    amount: number;
+    availableFrom: string;
+    contractorRating: number;
+    actionUrl: string;
+  }) => sendNotification({ to: data.landlordEmail, type: "quote_received", data }),
 
-  // Review notifications  
-  reviewReceived: (data: { recipientEmail: string; recipientName: string; reviewerName: string; rating: number; reviewText: string; viewUrl: string }) =>
-    sendNotification({ to: data.recipientEmail, type: "review_received", data }),
+  // Review notifications
+  reviewReceived: (data: {
+    recipientEmail: string;
+    recipientName: string;
+    reviewerName: string;
+    rating: number;
+    reviewText: string;
+    viewUrl: string;
+  }) => sendNotification({ to: data.recipientEmail, type: "review_received", data }),
 
   // Document notifications
-  documentUploaded: (data: { recipientEmail: string; recipientName: string; propertyAddress: string; documentName: string; documentType: string; uploaderName: string; viewUrl: string }) =>
-    sendNotification({ to: data.recipientEmail, type: "document_uploaded", data }),
+  documentUploaded: (data: {
+    recipientEmail: string;
+    recipientName: string;
+    propertyAddress: string;
+    documentName: string;
+    documentType: string;
+    uploaderName: string;
+    viewUrl: string;
+  }) => sendNotification({ to: data.recipientEmail, type: "document_uploaded", data }),
 
   // Welcome
   welcome: (data: { email: string; name: string; dashboardUrl: string }) =>

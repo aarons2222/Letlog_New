@@ -17,9 +17,17 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowLeft, Home, Upload, X, Save, MapPin, Bed, Bath, 
-  Building2, PoundSterling
+import {
+  ArrowLeft,
+  Home,
+  Upload,
+  X,
+  Save,
+  MapPin,
+  Bed,
+  Bath,
+  Building2,
+  PoundSterling,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -46,7 +54,7 @@ function NewPropertyContent() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [images, setImages] = useState<string[]>([]);
-  
+
   const [formData, setFormData] = useState({
     address_line_1: "",
     address_line_2: "",
@@ -62,7 +70,7 @@ function NewPropertyContent() {
   });
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,12 +79,12 @@ function NewPropertyContent() {
 
     // In production, upload to Supabase Storage
     // For now, create local preview URLs
-    const newImages = Array.from(files).map(file => URL.createObjectURL(file));
-    setImages(prev => [...prev, ...newImages].slice(0, 6)); // Max 6 images
+    const newImages = Array.from(files).map((file) => URL.createObjectURL(file));
+    setImages((prev) => [...prev, ...newImages].slice(0, 6)); // Max 6 images
   };
 
   const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,15 +93,20 @@ function NewPropertyContent() {
 
     try {
       // Validate required fields
-      if (!formData.address_line_1 || !formData.city || !formData.postcode || !formData.property_type) {
+      if (
+        !formData.address_line_1 ||
+        !formData.city ||
+        !formData.postcode ||
+        !formData.property_type
+      ) {
         toast.error("Please fill in all required fields");
         setIsLoading(false);
         return;
       }
 
-      const response = await fetch('/api/properties', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/properties", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address_line_1: formData.address_line_1,
           address_line_2: formData.address_line_2,
@@ -108,7 +121,7 @@ function NewPropertyContent() {
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to add property');
+      if (!response.ok) throw new Error(result.error || "Failed to add property");
 
       toast.success("Property added successfully!");
       router.push("/properties");
@@ -122,7 +135,7 @@ function NewPropertyContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50"
@@ -146,10 +159,7 @@ function NewPropertyContent() {
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Address Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -239,12 +249,15 @@ function NewPropertyContent() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="property_type">Property Type *</Label>
-                  <Select value={formData.property_type} onValueChange={(v) => handleChange("property_type", v)}>
+                  <Select
+                    value={formData.property_type}
+                    onValueChange={(v) => handleChange("property_type", v)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {propertyTypes.map(type => (
+                      {propertyTypes.map((type) => (
                         <SelectItem key={type.value} value={type.value}>
                           {type.label}
                         </SelectItem>
@@ -289,12 +302,15 @@ function NewPropertyContent() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="epc_rating">EPC Rating</Label>
-                    <Select value={formData.epc_rating} onValueChange={(v) => handleChange("epc_rating", v)}>
+                    <Select
+                      value={formData.epc_rating}
+                      onValueChange={(v) => handleChange("epc_rating", v)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
-                        {["A", "B", "C", "D", "E", "F", "G"].map(rating => (
+                        {["A", "B", "C", "D", "E", "F", "G"].map((rating) => (
                           <SelectItem key={rating} value={rating}>
                             {rating}
                           </SelectItem>
@@ -345,7 +361,11 @@ function NewPropertyContent() {
                       animate={{ opacity: 1, scale: 1 }}
                       className="relative aspect-video rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800"
                     >
-                      <img src={image} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
+                      <img
+                        src={image}
+                        alt={`Property ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
@@ -355,7 +375,7 @@ function NewPropertyContent() {
                       </button>
                     </motion.div>
                   ))}
-                  
+
                   {images.length < 6 && (
                     <label className="aspect-video rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors">
                       <Upload className="w-8 h-8 text-slate-400 mb-2" />

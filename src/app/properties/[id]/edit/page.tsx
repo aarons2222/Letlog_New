@@ -16,9 +16,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import {
-  ArrowLeft, Home, Save, MapPin, Bed, Bath, Building2
-} from "lucide-react";
+import { ArrowLeft, Home, Save, MapPin, Bed, Bath, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
@@ -55,11 +53,7 @@ export default function EditPropertyPage() {
     async function fetchProperty() {
       const supabase = createClient();
       try {
-        const { data, error } = await supabase
-          .from("properties")
-          .select("*")
-          .eq("id", id)
-          .single();
+        const { data, error } = await supabase.from("properties").select("*").eq("id", id).single();
 
         if (error) throw error;
 
@@ -94,7 +88,12 @@ export default function EditPropertyPage() {
     setIsSaving(true);
 
     try {
-      if (!formData.address_line_1 || !formData.city || !formData.postcode || !formData.property_type) {
+      if (
+        !formData.address_line_1 ||
+        !formData.city ||
+        !formData.postcode ||
+        !formData.property_type
+      ) {
         toast.error("Please fill in all required fields");
         setIsSaving(false);
         return;
@@ -237,7 +236,11 @@ export default function EditPropertyPage() {
           </motion.div>
 
           {/* Property Details */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
             <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -253,7 +256,10 @@ export default function EditPropertyPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="property_type">Property Type *</Label>
-                  <Select value={formData.property_type} onValueChange={(v) => handleChange("property_type", v)}>
+                  <Select
+                    value={formData.property_type}
+                    onValueChange={(v) => handleChange("property_type", v)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>

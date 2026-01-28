@@ -16,12 +16,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { 
-  ArrowLeft, FileText, PoundSterling, Clock, CheckCircle, 
-  XCircle, AlertCircle, MapPin, Calendar, ChevronRight, Briefcase
+import {
+  ArrowLeft,
+  FileText,
+  PoundSterling,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  MapPin,
+  Calendar,
+  ChevronRight,
+  Briefcase,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
+import { containerVariants, itemVariants } from "@/lib/animations";
 import { toast } from "sonner";
 
 interface QuoteItem {
@@ -43,61 +53,51 @@ interface QuoteItem {
   review_text?: string;
 }
 
-const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType; description: string }> = {
-  pending: { 
-    label: "Pending", 
-    color: "bg-amber-100 text-amber-700", 
+const statusConfig: Record<
+  string,
+  { label: string; color: string; icon: React.ElementType; description: string }
+> = {
+  pending: {
+    label: "Pending",
+    color: "bg-amber-100 text-amber-700",
     icon: Clock,
-    description: "Awaiting landlord response"
+    description: "Awaiting landlord response",
   },
-  submitted: { 
-    label: "Pending", 
-    color: "bg-amber-100 text-amber-700", 
+  submitted: {
+    label: "Pending",
+    color: "bg-amber-100 text-amber-700",
     icon: Clock,
-    description: "Awaiting landlord response"
+    description: "Awaiting landlord response",
   },
-  accepted: { 
-    label: "Accepted", 
-    color: "bg-green-100 text-green-700", 
+  accepted: {
+    label: "Accepted",
+    color: "bg-green-100 text-green-700",
     icon: CheckCircle,
-    description: "Ready to start work"
+    description: "Ready to start work",
   },
-  rejected: { 
-    label: "Not Selected", 
-    color: "bg-slate-100 text-slate-600", 
+  rejected: {
+    label: "Not Selected",
+    color: "bg-slate-100 text-slate-600",
     icon: XCircle,
-    description: "Another quote was chosen"
+    description: "Another quote was chosen",
   },
-  withdrawn: { 
-    label: "Withdrawn", 
-    color: "bg-slate-100 text-slate-500", 
+  withdrawn: {
+    label: "Withdrawn",
+    color: "bg-slate-100 text-slate-500",
     icon: XCircle,
-    description: "Quote withdrawn"
+    description: "Quote withdrawn",
   },
-  completed: { 
-    label: "Completed", 
-    color: "bg-blue-100 text-blue-700", 
+  completed: {
+    label: "Completed",
+    color: "bg-blue-100 text-blue-700",
     icon: CheckCircle,
-    description: "Job finished"
+    description: "Job finished",
   },
-};
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
 };
 
 // Map DB status to UI status
 function mapQuoteStatus(dbStatus: string): string {
-  if (dbStatus === 'submitted') return 'pending';
+  if (dbStatus === "submitted") return "pending";
   return dbStatus;
 }
 
@@ -111,28 +111,32 @@ export default function QuotesPage() {
     async function fetchQuotes() {
       const supabase = createClient();
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           setIsLoading(false);
           return;
         }
 
         const { data, error } = await supabase
-          .from('quotes')
-          .select(`
+          .from("quotes")
+          .select(
+            `
             *,
             tenders(
               id, title, landlord_id,
               properties(address_line_1, address_line_2, city, postcode),
               profiles:landlord_id(full_name)
             )
-          `)
-          .eq('contractor_id', user.id)
-          .order('created_at', { ascending: false });
+          `,
+          )
+          .eq("contractor_id", user.id)
+          .order("created_at", { ascending: false });
 
         if (error) {
-          console.error('Error fetching quotes:', error);
-          toast.error('Failed to load quotes');
+          console.error("Error fetching quotes:", error);
+          toast.error("Failed to load quotes");
           setIsLoading(false);
           return;
         }
@@ -141,27 +145,29 @@ export default function QuotesPage() {
           const tender = q.tenders;
           const prop = tender?.properties;
           const address = prop
-            ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode].filter(Boolean).join(', ')
-            : 'Unknown';
+            ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+                .filter(Boolean)
+                .join(", ")
+            : "Unknown";
 
           return {
             id: q.id,
             tender_id: q.tender_id,
-            tender_title: tender?.title || 'Job',
+            tender_title: tender?.title || "Job",
             property_address: address,
             amount: Number(q.amount) || 0,
-            description: q.message || q.breakdown || '',
+            description: q.message || q.breakdown || "",
             status: mapQuoteStatus(q.status),
-            submitted_date: q.created_at ? new Date(q.created_at).toISOString().split('T')[0] : '',
-            landlord_name: tender?.profiles?.full_name || 'Landlord',
+            submitted_date: q.created_at ? new Date(q.created_at).toISOString().split("T")[0] : "",
+            landlord_name: tender?.profiles?.full_name || "Landlord",
             warranty_months: 0,
           };
         });
 
         setQuotes(mapped);
       } catch (err) {
-        console.error('Error:', err);
-        toast.error('Failed to load quotes');
+        console.error("Error:", err);
+        toast.error("Failed to load quotes");
       } finally {
         setIsLoading(false);
       }
@@ -178,7 +184,8 @@ export default function QuotesPage() {
       try {
         let query = supabase
           .from("quotes")
-          .select(`
+          .select(
+            `
             *,
             tenders (
               id, title, property_id,
@@ -189,7 +196,8 @@ export default function QuotesPage() {
             profiles!quotes_contractor_id_fkey (
               full_name
             )
-          `)
+          `,
+          )
           .order("created_at", { ascending: false });
 
         // Contractors see their quotes, landlords see quotes on their tenders
@@ -241,21 +249,19 @@ export default function QuotesPage() {
     fetchQuotes();
   }, [userId, role]);
 
-  const filteredQuotes = filterStatus 
-    ? quotes.filter(q => q.status === filterStatus)
-    : quotes;
+  const filteredQuotes = filterStatus ? quotes.filter((q) => q.status === filterStatus) : quotes;
 
   // Stats
   const stats = {
     total: quotes.length,
-    pending: quotes.filter(q => q.status === "pending").length,
-    accepted: quotes.filter(q => q.status === "accepted").length,
-    completed: quotes.filter(q => q.status === "completed").length,
+    pending: quotes.filter((q) => q.status === "pending").length,
+    accepted: quotes.filter((q) => q.status === "accepted").length,
+    completed: quotes.filter((q) => q.status === "completed").length,
   };
 
   // Calculate totals
   const totalEarnings = quotes
-    .filter(q => q.status === "completed" && q.paid)
+    .filter((q) => q.status === "completed" && q.paid)
     .reduce((sum, q) => sum + q.amount, 0);
 
   if (isLoading) {
@@ -273,7 +279,7 @@ export default function QuotesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50"
@@ -296,7 +302,7 @@ export default function QuotesPage() {
 
       <main className="container mx-auto px-4 py-8">
         {/* Stats */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
@@ -392,16 +398,14 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
   const StatusIcon = status.icon;
 
   return (
-    <motion.div
-      variants={itemVariants}
-      layout
-      whileHover={{ y: -2 }}
-    >
+    <motion.div variants={itemVariants} layout whileHover={{ y: -2 }}>
       <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/70 dark:bg-slate-900/70 backdrop-blur">
         <CardContent className="p-5">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             {/* Status Icon */}
-            <div className={`w-12 h-12 rounded-xl ${status.color.replace("text-", "bg-").split(" ")[0]} flex items-center justify-center flex-shrink-0`}>
+            <div
+              className={`w-12 h-12 rounded-xl ${status.color.replace("text-", "bg-").split(" ")[0]} flex items-center justify-center flex-shrink-0`}
+            >
               <StatusIcon className={`w-6 h-6 ${status.color.split(" ")[1]}`} />
             </div>
 
@@ -433,9 +437,7 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
                   Submitted {quote.submitted_date}
                 </span>
                 <span>For: {quote.landlord_name}</span>
-                {quote.warranty_months > 0 && (
-                  <span>{quote.warranty_months}mo warranty</span>
-                )}
+                {quote.warranty_months > 0 && <span>{quote.warranty_months}mo warranty</span>}
               </div>
 
               {/* Status-specific info */}
@@ -459,7 +461,9 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
                 <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <div className="flex items-center gap-1 mb-1">
                     {[...Array(quote.review_rating || 0)].map((_, i) => (
-                      <span key={i} className="text-amber-500">★</span>
+                      <span key={i} className="text-amber-500">
+                        ★
+                      </span>
                     ))}
                   </div>
                   <p className="text-sm text-blue-700 dark:text-blue-400">

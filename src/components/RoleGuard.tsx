@@ -15,11 +15,7 @@ interface RoleGuardProps {
  * Guards a page so only users with the specified roles can see it.
  * Redirects to /dashboard (or a custom path) if the user's role doesn't match.
  */
-export function RoleGuard({
-  allowedRoles,
-  children,
-  fallbackPath = "/dashboard",
-}: RoleGuardProps) {
+export function RoleGuard({ allowedRoles, children, fallbackPath = "/dashboard" }: RoleGuardProps) {
   const { role, isLoading } = useRole();
   const router = useRouter();
 

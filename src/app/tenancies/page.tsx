@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -32,18 +32,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { 
-  Home, 
-  Users, 
-  Calendar, 
-  Plus, 
-  MoreVertical, 
+import {
+  Home,
+  Users,
+  Calendar,
+  Plus,
+  MoreVertical,
   UserPlus,
   XCircle,
   Mail,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -91,13 +91,13 @@ export default function TenanciesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // End Tenancy Dialog
   const [endTenancyOpen, setEndTenancyOpen] = useState(false);
   const [selectedTenancy, setSelectedTenancy] = useState<Tenancy | null>(null);
   const [endReason, setEndReason] = useState("");
   const [endNotes, setEndNotes] = useState("");
-  
+
   // Invite Tenant Dialog
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -108,7 +108,9 @@ export default function TenanciesPage() {
     async function fetchTenancies() {
       const supabase = createClient();
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           setIsLoading(false);
           return;
@@ -116,18 +118,20 @@ export default function TenanciesPage() {
 
         // Fetch tenancies with property and tenant details
         const { data, error } = await supabase
-          .from('tenancies')
-          .select(`
+          .from("tenancies")
+          .select(
+            `
             *,
             properties!inner(id, address_line_1, address_line_2, city, postcode, property_type, bedrooms, landlord_id),
             tenancy_tenants(id, is_lead_tenant, tenant_id, profiles:tenant_id(id, full_name, email))
-          `)
-          .eq('properties.landlord_id', user.id)
-          .order('created_at', { ascending: false });
+          `,
+          )
+          .eq("properties.landlord_id", user.id)
+          .order("created_at", { ascending: false });
 
         if (error) {
-          console.error('Error fetching tenancies:', error);
-          toast.error('Failed to load tenancies');
+          console.error("Error fetching tenancies:", error);
+          toast.error("Failed to load tenancies");
           setIsLoading(false);
           return;
         }
@@ -136,12 +140,12 @@ export default function TenanciesPage() {
           const prop = t.properties;
           const address = [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
             .filter(Boolean)
-            .join(', ');
+            .join(", ");
 
           const tenants: TenancyTenant[] = (t.tenancy_tenants || []).map((tt: any) => ({
             id: tt.profiles?.id || tt.tenant_id,
-            name: tt.profiles?.full_name || 'Unknown',
-            email: tt.profiles?.email || '',
+            name: tt.profiles?.full_name || "Unknown",
+            email: tt.profiles?.email || "",
             isLead: tt.is_lead_tenant || false,
           }));
 
@@ -150,7 +154,7 @@ export default function TenanciesPage() {
             property: {
               id: prop.id,
               address,
-              type: prop.property_type || 'house',
+              type: prop.property_type || "house",
               bedrooms: prop.bedrooms || 0,
             },
             tenants,
@@ -164,8 +168,8 @@ export default function TenanciesPage() {
 
         setTenancies(mapped);
       } catch (err) {
-        console.error('Error:', err);
-        toast.error('Failed to load tenancies');
+        console.error("Error:", err);
+        toast.error("Failed to load tenancies");
       } finally {
         setIsLoading(false);
       }
@@ -175,9 +179,9 @@ export default function TenanciesPage() {
   }, []);
 
   const filteredTenancies = tenancies.filter((t) => {
-    const matchesSearch = 
+    const matchesSearch =
       t.property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.tenants.some(tenant => tenant.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      t.tenants.some((tenant) => tenant.name.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesStatus = statusFilter === "all" || t.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -189,28 +193,30 @@ export default function TenanciesPage() {
 
   const confirmEndTenancy = async () => {
     if (!selectedTenancy) return;
-    
+
     const supabase = createClient();
     const { error } = await supabase
-      .from('tenancies')
-      .update({ status: 'ended', ended_at: new Date().toISOString(), end_reason: endReason })
-      .eq('id', selectedTenancy.id);
+      .from("tenancies")
+      .update({ status: "ended", ended_at: new Date().toISOString(), end_reason: endReason })
+      .eq("id", selectedTenancy.id);
 
     if (error) {
-      toast.error('Failed to end tenancy');
+      toast.error("Failed to end tenancy");
       return;
     }
 
-    setTenancies(prev => prev.map(t => 
-      t.id === selectedTenancy.id 
-        ? { ...t, status: "ended", endedAt: new Date().toISOString() }
-        : t
-    ));
-    
+    setTenancies((prev) =>
+      prev.map((t) =>
+        t.id === selectedTenancy.id
+          ? { ...t, status: "ended", endedAt: new Date().toISOString() }
+          : t,
+      ),
+    );
+
     toast.success("Tenancy ended", {
       description: "Former tenants can leave reviews for 60 days.",
     });
-    
+
     setEndTenancyOpen(false);
     setSelectedTenancy(null);
     setEndReason("");
@@ -227,28 +233,28 @@ export default function TenanciesPage() {
       toast.error("Please enter an email address");
       return;
     }
-    
+
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase
-      .from('tenant_invitations')
-      .insert({
-        tenancy_id: selectedTenancy.id,
-        email: inviteEmail,
-        invited_by: user.id,
-      });
+    const { error } = await supabase.from("tenant_invitations").insert({
+      tenancy_id: selectedTenancy.id,
+      email: inviteEmail,
+      invited_by: user.id,
+    });
 
     if (error) {
-      toast.error('Failed to send invitation');
+      toast.error("Failed to send invitation");
       return;
     }
-    
+
     toast.success("Invitation sent", {
       description: `Invitation sent to ${inviteEmail}`,
     });
-    
+
     setInviteOpen(false);
     setInviteEmail("");
     setInviteName("");
@@ -312,7 +318,10 @@ export default function TenanciesPage() {
         {/* Tenancy Cards */}
         <div className="grid gap-6">
           {filteredTenancies.map((tenancy) => (
-            <Card key={tenancy.id} className="rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+            <Card
+              key={tenancy.id}
+              className="rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+            >
               <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
@@ -347,7 +356,7 @@ export default function TenanciesPage() {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {tenancy.status === "active" && (
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => handleEndTenancy(tenancy)}
                             className="text-red-600 focus:text-red-600"
                           >
@@ -369,14 +378,16 @@ export default function TenanciesPage() {
                       Tenants
                     </div>
                     <div className="space-y-1">
-                      {tenancy.tenants.length > 0 ? tenancy.tenants.map((tenant) => (
-                        <div key={tenant.id} className="text-sm text-slate-700">
-                          {tenant.name}
-                          {tenant.isLead && (
-                            <span className="text-xs text-slate-400 ml-1">(Lead)</span>
-                          )}
-                        </div>
-                      )) : (
+                      {tenancy.tenants.length > 0 ? (
+                        tenancy.tenants.map((tenant) => (
+                          <div key={tenant.id} className="text-sm text-slate-700">
+                            {tenant.name}
+                            {tenant.isLead && (
+                              <span className="text-xs text-slate-400 ml-1">(Lead)</span>
+                            )}
+                          </div>
+                        ))
+                      ) : (
                         <div className="text-sm text-slate-400">No tenants assigned</div>
                       )}
                     </div>
@@ -389,17 +400,25 @@ export default function TenanciesPage() {
                       Term
                     </div>
                     <div className="text-sm text-slate-700">
-                      {tenancy.startDate ? new Date(tenancy.startDate).toLocaleDateString('en-GB', { 
-                        day: 'numeric', month: 'short', year: 'numeric' 
-                      }) : "—"}
+                      {tenancy.startDate
+                        ? new Date(tenancy.startDate).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
                       {" → "}
-                      {tenancy.endDate ? new Date(tenancy.endDate).toLocaleDateString('en-GB', { 
-                        day: 'numeric', month: 'short', year: 'numeric' 
-                      }) : "Rolling"}
+                      {tenancy.endDate
+                        ? new Date(tenancy.endDate).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "Rolling"}
                     </div>
                     {tenancy.status === "ended" && tenancy.endedAt && (
                       <div className="text-xs text-slate-500 mt-1">
-                        Ended: {new Date(tenancy.endedAt).toLocaleDateString('en-GB')}
+                        Ended: {new Date(tenancy.endedAt).toLocaleDateString("en-GB")}
                       </div>
                     )}
                   </div>
@@ -423,8 +442,12 @@ export default function TenanciesPage() {
                       <span className="font-medium text-amber-800">Review window active</span>
                       <p className="text-amber-700 mt-0.5">
                         Former tenants can leave a review until{" "}
-                        {new Date(new Date(tenancy.endedAt).getTime() + 60 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', {
-                          day: 'numeric', month: 'short', year: 'numeric'
+                        {new Date(
+                          new Date(tenancy.endedAt).getTime() + 60 * 24 * 60 * 60 * 1000,
+                        ).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
                         })}
                       </p>
                     </div>
@@ -442,8 +465,8 @@ export default function TenanciesPage() {
                 </div>
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">No tenancies found</h3>
                 <p className="text-slate-600 mb-6">
-                  {searchQuery || statusFilter !== "all" 
-                    ? "Try adjusting your filters" 
+                  {searchQuery || statusFilter !== "all"
+                    ? "Try adjusting your filters"
                     : "Create your first tenancy to get started"}
                 </p>
                 <Link href="/tenancies/new">
@@ -467,7 +490,8 @@ export default function TenanciesPage() {
               End Tenancy
             </DialogTitle>
             <DialogDescription>
-              This will mark the tenancy as ended. Former tenants will have 60 days to leave a review.
+              This will mark the tenancy as ended. Former tenants will have 60 days to leave a
+              review.
             </DialogDescription>
           </DialogHeader>
 
@@ -476,7 +500,7 @@ export default function TenanciesPage() {
               <div className="p-4 bg-slate-50 rounded-xl">
                 <div className="font-medium text-slate-900">{selectedTenancy.property.address}</div>
                 <div className="text-sm text-slate-600 mt-1">
-                  {selectedTenancy.tenants.map(t => t.name).join(", ") || "No tenants"}
+                  {selectedTenancy.tenants.map((t) => t.name).join(", ") || "No tenants"}
                 </div>
               </div>
 
@@ -510,10 +534,17 @@ export default function TenanciesPage() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEndTenancyOpen(false)} className="rounded-xl">
+            <Button
+              variant="outline"
+              onClick={() => setEndTenancyOpen(false)}
+              className="rounded-xl"
+            >
               Cancel
             </Button>
-            <Button onClick={confirmEndTenancy} className="rounded-xl bg-amber-600 hover:bg-amber-700">
+            <Button
+              onClick={confirmEndTenancy}
+              className="rounded-xl bg-amber-600 hover:bg-amber-700"
+            >
               End Tenancy
             </Button>
           </DialogFooter>
@@ -563,7 +594,10 @@ export default function TenanciesPage() {
               </div>
 
               <div className="p-3 bg-blue-50 rounded-xl text-sm text-blue-700">
-                <p>The tenant will receive an email with a link to create their account and access this tenancy.</p>
+                <p>
+                  The tenant will receive an email with a link to create their account and access
+                  this tenancy.
+                </p>
               </div>
             </div>
           )}
@@ -572,7 +606,11 @@ export default function TenanciesPage() {
             <Button variant="outline" onClick={() => setInviteOpen(false)} className="rounded-xl">
               Cancel
             </Button>
-            <Button onClick={sendInvitation} disabled={inviteSending} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
+            <Button
+              onClick={sendInvitation}
+              disabled={inviteSending}
+              className="rounded-xl bg-emerald-600 hover:bg-emerald-700"
+            >
               <Mail className="w-4 h-4 mr-2" />
               {inviteSending ? "Sending..." : "Send Invitation"}
             </Button>

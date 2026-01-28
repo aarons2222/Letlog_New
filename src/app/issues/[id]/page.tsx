@@ -17,10 +17,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { 
-  ArrowLeft, AlertCircle, Clock, CheckCircle2, 
-  MessageSquare, Send, Home, Calendar, User,
-  Image as ImageIcon, ChevronLeft, ChevronRight
+import {
+  ArrowLeft,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+  MessageSquare,
+  Send,
+  Home,
+  Calendar,
+  User,
+  Image as ImageIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -62,16 +71,16 @@ interface TimelineItem {
 
 function mapIssueStatus(dbStatus: string): "open" | "in_progress" | "resolved" {
   switch (dbStatus) {
-    case 'reported':
-    case 'acknowledged':
-      return 'open';
-    case 'in_progress':
-      return 'in_progress';
-    case 'resolved':
-    case 'closed':
-      return 'resolved';
+    case "reported":
+    case "acknowledged":
+      return "open";
+    case "in_progress":
+      return "in_progress";
+    case "resolved":
+    case "closed":
+      return "resolved";
     default:
-      return 'open';
+      return "open";
   }
 }
 
@@ -103,44 +112,48 @@ export default function IssueDetailPage() {
     async function fetchIssue() {
       const supabase = createClient();
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) setCurrentUserId(user.id);
 
         // Fetch issue with property and comments
         const { data, error } = await supabase
-          .from('issues')
-          .select(`
+          .from("issues")
+          .select(
+            `
             *,
             properties(address_line_1, address_line_2, city, postcode),
             issue_comments(
               id, content, created_at,
               profiles:author_id(id, full_name)
             )
-          `)
-          .eq('id', issueId)
+          `,
+          )
+          .eq("id", issueId)
           .single();
 
         if (error || !data) {
-          console.error('Error fetching issue:', error);
-          toast.error('Failed to load issue');
+          console.error("Error fetching issue:", error);
+          toast.error("Failed to load issue");
           setIsLoading(false);
           return;
         }
 
         const prop = data.properties;
         const address = prop
-          ? [prop.address_line_1, prop.address_line_2].filter(Boolean).join(', ')
-          : 'Unknown property';
+          ? [prop.address_line_1, prop.address_line_2].filter(Boolean).join(", ")
+          : "Unknown property";
 
         // Build timeline from issue creation + comments
         const timeline: TimelineItem[] = [];
 
         // Issue created event
         timeline.push({
-          id: 'created',
-          type: 'created',
-          message: 'Issue reported',
-          user: 'Reporter',
+          id: "created",
+          type: "created",
+          message: "Issue reported",
+          user: "Reporter",
           timestamp: data.created_at,
         });
 
@@ -148,14 +161,17 @@ export default function IssueDetailPage() {
         if (data.issue_comments) {
           const comments = Array.isArray(data.issue_comments) ? data.issue_comments : [];
           comments
-            .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            .sort(
+              (a: any, b: any) =>
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+            )
             .forEach((comment: any) => {
               const isCurrentUser = user && comment.profiles?.id === user.id;
               timeline.push({
                 id: comment.id,
-                type: 'comment',
+                type: "comment",
                 message: comment.content,
-                user: isCurrentUser ? 'You' : (comment.profiles?.full_name || 'User'),
+                user: isCurrentUser ? "You" : comment.profiles?.full_name || "User",
                 timestamp: comment.created_at,
               });
             });
@@ -164,19 +180,19 @@ export default function IssueDetailPage() {
         setIssue({
           id: data.id,
           title: data.title,
-          description: data.description || '',
+          description: data.description || "",
           property: address,
           status: mapIssueStatus(data.status),
-          priority: data.priority || 'medium',
-          category: data.location_in_property || 'General',
+          priority: data.priority || "medium",
+          category: data.location_in_property || "General",
           createdAt: data.created_at,
           updatedAt: data.updated_at,
           photos: data.photos || [],
           timeline,
         });
       } catch (err) {
-        console.error('Error:', err);
-        toast.error('Failed to load issue');
+        console.error("Error:", err);
+        toast.error("Failed to load issue");
       } finally {
         setIsLoading(false);
       }
@@ -191,39 +207,43 @@ export default function IssueDetailPage() {
 
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('issue_comments')
+      .from("issue_comments")
       .insert({
         issue_id: issue.id,
         author_id: currentUserId,
         content: newComment.trim(),
       })
-      .select('id, content, created_at')
+      .select("id, content, created_at")
       .single();
 
     if (error) {
-      toast.error('Failed to send comment');
+      toast.error("Failed to send comment");
       setIsSending(false);
       return;
     }
 
     // Add to timeline
-    setIssue(prev => prev ? {
-      ...prev,
-      timeline: [
-        ...prev.timeline,
-        {
-          id: data.id,
-          type: 'comment',
-          message: data.content,
-          user: 'You',
-          timestamp: data.created_at,
-        }
-      ]
-    } : prev);
+    setIssue((prev) =>
+      prev
+        ? {
+            ...prev,
+            timeline: [
+              ...prev.timeline,
+              {
+                id: data.id,
+                type: "comment",
+                message: data.content,
+                user: "You",
+                timestamp: data.created_at,
+              },
+            ],
+          }
+        : prev,
+    );
 
     setIsSending(false);
     setNewComment("");
-    toast.success('Comment added');
+    toast.success("Comment added");
   };
 
   const formatDate = (dateString: string) => {
@@ -252,7 +272,9 @@ export default function IssueDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-slate-500 mb-4">Issue not found</p>
-          <Link href="/issues"><Button>Back to Issues</Button></Link>
+          <Link href="/issues">
+            <Button>Back to Issues</Button>
+          </Link>
         </div>
       </div>
     );
@@ -263,7 +285,7 @@ export default function IssueDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50"
@@ -319,13 +341,17 @@ export default function IssueDetailPage() {
                       <span>Photo {currentPhoto + 1}</span>
                     </div>
                   </motion.div>
-                  
+
                   {issue.photos.length > 1 && (
                     <>
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        onClick={() => setCurrentPhoto(p => (p - 1 + issue.photos.length) % issue.photos.length)}
+                        onClick={() =>
+                          setCurrentPhoto(
+                            (p) => (p - 1 + issue.photos.length) % issue.photos.length,
+                          )
+                        }
                         className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
                       >
                         <ChevronLeft className="w-5 h-5" />
@@ -333,7 +359,7 @@ export default function IssueDetailPage() {
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        onClick={() => setCurrentPhoto(p => (p + 1) % issue.photos.length)}
+                        onClick={() => setCurrentPhoto((p) => (p + 1) % issue.photos.length)}
                         className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
                       >
                         <ChevronRight className="w-5 h-5" />
@@ -372,7 +398,11 @@ export default function IssueDetailPage() {
                         {formatDate(issue.createdAt)}
                       </span>
                       <Badge variant="outline">{issue.category}</Badge>
-                      <Badge className={priorityConfig[issue.priority]?.color || "bg-slate-100 text-slate-600"}>
+                      <Badge
+                        className={
+                          priorityConfig[issue.priority]?.color || "bg-slate-100 text-slate-600"
+                        }
+                      >
                         {issue.priority}
                       </Badge>
                     </div>
@@ -405,11 +435,13 @@ export default function IssueDetailPage() {
                         className="flex gap-4"
                       >
                         <div className="flex flex-col items-center">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            item.user === "You" 
-                              ? "bg-blue-100 text-blue-600" 
-                              : "bg-slate-100 text-slate-600"
-                          }`}>
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              item.user === "You"
+                                ? "bg-blue-100 text-blue-600"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
                             <User className="w-4 h-4" />
                           </div>
                           {index < issue.timeline.length - 1 && (
@@ -425,11 +457,13 @@ export default function IssueDetailPage() {
                               {formatDate(item.timestamp)}
                             </span>
                           </div>
-                          <p className={`text-sm ${
-                            item.type === "status" 
-                              ? "text-blue-600 italic" 
-                              : "text-slate-600 dark:text-slate-300"
-                          }`}>
+                          <p
+                            className={`text-sm ${
+                              item.type === "status"
+                                ? "text-blue-600 italic"
+                                : "text-slate-600 dark:text-slate-300"
+                            }`}
+                          >
                             {item.message}
                           </p>
                         </div>
@@ -454,7 +488,7 @@ export default function IssueDetailPage() {
                     />
                   </div>
                   <div className="flex justify-end mt-3">
-                    <Button 
+                    <Button
                       onClick={handleSendComment}
                       disabled={!newComment.trim() || isSending}
                       className="gap-2"

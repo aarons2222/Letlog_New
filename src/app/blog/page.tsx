@@ -9,18 +9,30 @@ export default function BlogPage() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/logo.svg" alt="LetLog" width={40} height={40} className="rounded-xl shadow-lg" />
+            <Image
+              src="/logo.svg"
+              alt="LetLog"
+              width={40}
+              height={40}
+              className="rounded-xl shadow-lg"
+            />
             <span className="font-semibold text-xl tracking-tight">
-              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">Let</span>
+              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">
+                Let
+              </span>
               <span>Log</span>
             </span>
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/login">
-              <Button variant="ghost" className="rounded-full px-5">Sign In</Button>
+              <Button variant="ghost" className="rounded-full px-5">
+                Sign In
+              </Button>
             </Link>
             <Link href="/signup">
-              <Button className="rounded-full px-5 bg-slate-900 hover:bg-slate-800">Get Started</Button>
+              <Button className="rounded-full px-5 bg-slate-900 hover:bg-slate-800">
+                Get Started
+              </Button>
             </Link>
           </div>
         </div>
@@ -29,9 +41,7 @@ export default function BlogPage() {
       {/* Hero */}
       <section className="py-20 bg-gradient-to-b from-slate-50 to-white">
         <div className="container mx-auto px-6 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-            LetLog Blog
-          </h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">LetLog Blog</h1>
           <p className="text-xl text-slate-600 max-w-2xl mx-auto">
             Tips, guides, and insights for landlords, tenants, and property professionals.
           </p>

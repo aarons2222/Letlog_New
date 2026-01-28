@@ -48,7 +48,9 @@ export default function NewTenancyPage() {
     async function loadProperties() {
       const supabase = createClient();
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
@@ -70,7 +72,7 @@ export default function NewTenancyPage() {
   }, []);
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,7 +87,9 @@ export default function NewTenancyPage() {
       }
 
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         toast.error("You must be logged in");
         setIsLoading(false);
@@ -172,13 +176,20 @@ export default function NewTenancyPage() {
                   <div className="h-10 bg-slate-100 rounded animate-pulse" />
                 ) : properties.length === 0 ? (
                   <div className="text-center py-4">
-                    <p className="text-slate-500 mb-3">No properties found. Add a property first.</p>
+                    <p className="text-slate-500 mb-3">
+                      No properties found. Add a property first.
+                    </p>
                     <Link href="/properties/new">
-                      <Button variant="outline" size="sm">Add Property</Button>
+                      <Button variant="outline" size="sm">
+                        Add Property
+                      </Button>
                     </Link>
                   </div>
                 ) : (
-                  <Select value={formData.property_id} onValueChange={(v) => handleChange("property_id", v)}>
+                  <Select
+                    value={formData.property_id}
+                    onValueChange={(v) => handleChange("property_id", v)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a property" />
                     </SelectTrigger>
@@ -196,7 +207,11 @@ export default function NewTenancyPage() {
           </motion.div>
 
           {/* Dates */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
             <Card className="border-0 shadow-xl bg-white/70 backdrop-blur">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -237,7 +252,11 @@ export default function NewTenancyPage() {
           </motion.div>
 
           {/* Financial */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
             <Card className="border-0 shadow-xl bg-white/70 backdrop-blur">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -271,7 +290,10 @@ export default function NewTenancyPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="rent_frequency">Frequency</Label>
-                    <Select value={formData.rent_frequency} onValueChange={(v) => handleChange("rent_frequency", v)}>
+                    <Select
+                      value={formData.rent_frequency}
+                      onValueChange={(v) => handleChange("rent_frequency", v)}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -304,7 +326,11 @@ export default function NewTenancyPage() {
           </motion.div>
 
           {/* Notes */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
             <Card className="border-0 shadow-xl bg-white/70 backdrop-blur">
               <CardHeader>
                 <CardTitle>Notes</CardTitle>
@@ -329,7 +355,9 @@ export default function NewTenancyPage() {
             className="flex gap-4"
           >
             <Link href="/tenancies" className="flex-1">
-              <Button variant="outline" className="w-full">Cancel</Button>
+              <Button variant="outline" className="w-full">
+                Cancel
+              </Button>
             </Link>
             <Button type="submit" className="flex-1 gap-2" disabled={isLoading}>
               {isLoading ? (

@@ -10,28 +10,73 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { RoleGuard } from "@/components/RoleGuard";
-import { 
-  ArrowLeft, Camera, Upload, X, CheckCircle2, 
-  AlertTriangle, Droplets, Zap, Wind, Home,
-  Wrench, Image as ImageIcon, Send
+import {
+  ArrowLeft,
+  Camera,
+  Upload,
+  X,
+  CheckCircle2,
+  AlertTriangle,
+  Droplets,
+  Zap,
+  Wind,
+  Home,
+  Wrench,
+  Image as ImageIcon,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
 const categories = [
-  { id: "plumbing", label: "Plumbing", icon: Droplets, description: "Leaks, drains, toilets, boilers" },
+  {
+    id: "plumbing",
+    label: "Plumbing",
+    icon: Droplets,
+    description: "Leaks, drains, toilets, boilers",
+  },
   { id: "electrical", label: "Electrical", icon: Zap, description: "Lights, sockets, fuse box" },
   { id: "heating", label: "Heating", icon: Wind, description: "Radiators, thermostat, boiler" },
-  { id: "structural", label: "Structural", icon: Home, description: "Walls, ceilings, floors, damp" },
-  { id: "appliances", label: "Appliances", icon: Wrench, description: "Provided appliances not working" },
+  {
+    id: "structural",
+    label: "Structural",
+    icon: Home,
+    description: "Walls, ceilings, floors, damp",
+  },
+  {
+    id: "appliances",
+    label: "Appliances",
+    icon: Wrench,
+    description: "Provided appliances not working",
+  },
   { id: "other", label: "Other", icon: AlertTriangle, description: "Anything else" },
 ];
 
 const priorities = [
-  { id: "low", label: "Low", description: "Minor issue, no rush", color: "border-slate-300 bg-slate-50" },
-  { id: "medium", label: "Medium", description: "Needs attention soon", color: "border-yellow-300 bg-yellow-50" },
-  { id: "high", label: "High", description: "Affecting daily life", color: "border-orange-300 bg-orange-50" },
-  { id: "urgent", label: "Urgent", description: "Emergency situation", color: "border-red-300 bg-red-50" },
+  {
+    id: "low",
+    label: "Low",
+    description: "Minor issue, no rush",
+    color: "border-slate-300 bg-slate-50",
+  },
+  {
+    id: "medium",
+    label: "Medium",
+    description: "Needs attention soon",
+    color: "border-yellow-300 bg-yellow-50",
+  },
+  {
+    id: "high",
+    label: "High",
+    description: "Affecting daily life",
+    color: "border-orange-300 bg-orange-50",
+  },
+  {
+    id: "urgent",
+    label: "Urgent",
+    description: "Emergency situation",
+    color: "border-red-300 bg-red-50",
+  },
 ];
 
 const containerVariants: Variants = {
@@ -63,10 +108,10 @@ export default function NewIssuePage() {
   const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach(file => {
+      Array.from(files).forEach((file) => {
         const reader = new FileReader();
         reader.onload = (event) => {
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
             photos: [...prev.photos, event.target?.result as string],
           }));
@@ -77,7 +122,7 @@ export default function NewIssuePage() {
   }, []);
 
   const removePhoto = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       photos: prev.photos.filter((_, i) => i !== index),
     }));
@@ -87,7 +132,9 @@ export default function NewIssuePage() {
     setIsSubmitting(true);
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         toast.error("You must be logged in");
         setIsSubmitting(false);
@@ -150,7 +197,7 @@ export default function NewIssuePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50"
@@ -168,11 +215,13 @@ export default function NewIssuePage() {
                 </motion.button>
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-slate-800 dark:text-white">Report an Issue</h1>
+                <h1 className="text-xl font-bold text-slate-800 dark:text-white">
+                  Report an Issue
+                </h1>
                 <p className="text-sm text-slate-500">Step {step} of 3</p>
               </div>
             </div>
-            
+
             {/* Progress */}
             <div className="hidden sm:flex items-center gap-2">
               {[1, 2, 3].map((s) => (
@@ -211,7 +260,7 @@ export default function NewIssuePage() {
                   <motion.button
                     key={cat.id}
                     variants={itemVariants}
-                    onClick={() => setFormData(prev => ({ ...prev, category: cat.id }))}
+                    onClick={() => setFormData((prev) => ({ ...prev, category: cat.id }))}
                     className={`p-4 rounded-2xl border-2 text-left transition-all ${
                       formData.category === cat.id
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
@@ -260,7 +309,7 @@ export default function NewIssuePage() {
                     id="title"
                     placeholder="e.g., Boiler not heating water"
                     value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                     className="mt-2"
                   />
                 </div>
@@ -271,7 +320,9 @@ export default function NewIssuePage() {
                     id="description"
                     placeholder="Describe what's happening, when it started, and anything else relevant..."
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, description: e.target.value }))
+                    }
                     className="mt-2 min-h-[150px]"
                   />
                 </div>
@@ -282,7 +333,7 @@ export default function NewIssuePage() {
                     {priorities.map((p) => (
                       <motion.button
                         key={p.id}
-                        onClick={() => setFormData(prev => ({ ...prev, priority: p.id }))}
+                        onClick={() => setFormData((prev) => ({ ...prev, priority: p.id }))}
                         className={`p-3 rounded-xl border-2 text-left transition-all ${
                           formData.priority === p.id
                             ? `${p.color} border-current`
@@ -388,19 +439,27 @@ export default function NewIssuePage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-slate-500">Category</span>
-                      <span className="font-medium text-slate-800 dark:text-white capitalize">{formData.category}</span>
+                      <span className="font-medium text-slate-800 dark:text-white capitalize">
+                        {formData.category}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Title</span>
-                      <span className="font-medium text-slate-800 dark:text-white truncate max-w-[200px]">{formData.title}</span>
+                      <span className="font-medium text-slate-800 dark:text-white truncate max-w-[200px]">
+                        {formData.title}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Priority</span>
-                      <span className="font-medium text-slate-800 dark:text-white capitalize">{formData.priority}</span>
+                      <span className="font-medium text-slate-800 dark:text-white capitalize">
+                        {formData.priority}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Photos</span>
-                      <span className="font-medium text-slate-800 dark:text-white">{formData.photos.length}</span>
+                      <span className="font-medium text-slate-800 dark:text-white">
+                        {formData.photos.length}
+                      </span>
                     </div>
                   </div>
                 </motion.div>
@@ -418,7 +477,7 @@ export default function NewIssuePage() {
         >
           <Button
             variant="outline"
-            onClick={() => setStep(s => s - 1)}
+            onClick={() => setStep((s) => s - 1)}
             disabled={step === 1}
             className="gap-2"
           >
@@ -428,18 +487,14 @@ export default function NewIssuePage() {
 
           {step < 3 ? (
             <Button
-              onClick={() => setStep(s => s + 1)}
+              onClick={() => setStep((s) => s + 1)}
               disabled={!canProceed()}
               className="gap-2"
             >
               Continue
             </Button>
           ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="gap-2 min-w-[140px]"
-            >
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2 min-w-[140px]">
               {isSubmitting ? (
                 <motion.div
                   animate={{ rotate: 360 }}

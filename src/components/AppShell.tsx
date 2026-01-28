@@ -1,26 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useRole } from "@/contexts/RoleContext";
-import { roleConfig } from "@/lib/roles";
+import { roleConfig, routePermissions, type Role } from "@/lib/roles";
 import {
-  Home, Wrench, AlertTriangle, Briefcase, Star,
-  Building2, User, Calendar, Settings, Users, Receipt,
-  ChevronsRight, ChevronsLeft
+  Home,
+  Wrench,
+  AlertTriangle,
+  Briefcase,
+  Star,
+  Building2,
+  User,
+  Calendar,
+  Settings,
+  Users,
+  Receipt,
+  ChevronsRight,
+  ChevronsLeft,
 } from "lucide-react";
 
-function NavLink({ href, icon: Icon, label, active, collapsed }: {
-  href: string; icon: React.ElementType; label: string; active?: boolean; collapsed?: boolean;
+// Full nav items with associated route paths and icons
+const allNavItems: { href: string; icon: React.ElementType; label: string }[] = [
+  { href: "/dashboard", icon: Home, label: "Dashboard" },
+  { href: "/properties", icon: Building2, label: "Properties" },
+  { href: "/tenancies", icon: Users, label: "Tenancies" },
+  { href: "/issues", icon: Wrench, label: "Maintenance" },
+  { href: "/tenders", icon: Briefcase, label: "Jobs" },
+  { href: "/compliance", icon: AlertTriangle, label: "Compliance" },
+  { href: "/calendar", icon: Calendar, label: "Calendar" },
+  { href: "/quotes", icon: Receipt, label: "Quotes" },
+  { href: "/reviews", icon: Star, label: "Reviews" },
+];
+
+const settingsNav = { href: "/settings", icon: Settings, label: "Settings" };
+
+/** Filter nav items based on the user's role using routePermissions. */
+function getNavItemsForRole(role: Role | null) {
+  if (!role) return allNavItems; // Show all while loading
+  return allNavItems.filter((item) => {
+    const permission = routePermissions.find((rp) => rp.path === item.href);
+    // If no permission entry exists, show it (public route)
+    if (!permission) return true;
+    return permission.roles.includes(role);
+  });
+}
+
+function NavLink({
+  href,
+  icon: Icon,
+  label,
+  active,
+  collapsed,
+}: {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  active?: boolean;
+  collapsed?: boolean;
 }) {
   return (
     <Link href={href} title={collapsed ? label : undefined}>
-      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-        collapsed ? "justify-center" : ""
-      } ${
-        active ? "bg-slate-100 text-slate-900 font-semibold" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-      }`}>
+      <div
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+          collapsed ? "justify-center" : ""
+        } ${
+          active
+            ? "bg-slate-100 text-slate-900 font-semibold"
+            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+        }`}
+      >
         <Icon className="w-5 h-5 flex-shrink-0" />
         {!collapsed && <span className="font-medium whitespace-nowrap">{label}</span>}
       </div>
@@ -28,9 +78,16 @@ function NavLink({ href, icon: Icon, label, active, collapsed }: {
   );
 }
 
-export default function AppShell({ children, activeNav }: { children: React.ReactNode; activeNav?: string }) {
+export default function AppShell({
+  children,
+  activeNav,
+}: {
+  children: React.ReactNode;
+  activeNav?: string;
+}) {
   const { role, fullName, email } = useRole();
   const [expanded, setExpanded] = useState(false);
+  const navItems = useMemo(() => getNavItemsForRole(role), [role]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -42,7 +99,9 @@ export default function AppShell({ children, activeNav }: { children: React.Reac
               <span className="text-white font-bold text-xl">L</span>
             </div>
             <span className="font-bold text-xl">
-              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">Let</span>
+              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">
+                Let
+              </span>
               <span>Log</span>
             </span>
           </Link>
@@ -76,18 +135,25 @@ export default function AppShell({ children, activeNav }: { children: React.Reac
           }`}
         >
           <nav className="flex-1 space-y-1 p-2 mt-2">
-            <NavLink href="/dashboard" icon={Home} label="Dashboard" active={activeNav === "dashboard"} collapsed={!expanded} />
-            <NavLink href="/properties" icon={Building2} label="Properties" active={activeNav === "properties"} collapsed={!expanded} />
-            <NavLink href="/tenancies" icon={Users} label="Tenancies" active={activeNav === "tenancies"} collapsed={!expanded} />
-            <NavLink href="/issues" icon={Wrench} label="Maintenance" active={activeNav === "issues"} collapsed={!expanded} />
-            <NavLink href="/tenders" icon={Briefcase} label="Jobs" active={activeNav === "tenders"} collapsed={!expanded} />
-            <NavLink href="/compliance" icon={AlertTriangle} label="Compliance" active={activeNav === "compliance"} collapsed={!expanded} />
-            <NavLink href="/calendar" icon={Calendar} label="Calendar" active={activeNav === "calendar"} collapsed={!expanded} />
-            <NavLink href="/quotes" icon={Receipt} label="Quotes" active={activeNav === "quotes"} collapsed={!expanded} />
-            <NavLink href="/reviews" icon={Star} label="Reviews" active={activeNav === "reviews"} collapsed={!expanded} />
+            {navItems.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                label={item.label}
+                active={activeNav === item.href.slice(1)}
+                collapsed={!expanded}
+              />
+            ))}
 
             <div className="pt-4 border-t border-slate-200 mt-4">
-              <NavLink href="/settings" icon={Settings} label="Settings" active={activeNav === "settings"} collapsed={!expanded} />
+              <NavLink
+                href={settingsNav.href}
+                icon={settingsNav.icon}
+                label={settingsNav.label}
+                active={activeNav === "settings"}
+                collapsed={!expanded}
+              />
             </div>
           </nav>
 
@@ -95,14 +161,16 @@ export default function AppShell({ children, activeNav }: { children: React.Reac
             onClick={() => setExpanded(!expanded)}
             className="flex items-center justify-center p-3 m-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
           >
-            {expanded ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
+            {expanded ? (
+              <ChevronsLeft className="w-4 h-4" />
+            ) : (
+              <ChevronsRight className="w-4 h-4" />
+            )}
           </button>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );

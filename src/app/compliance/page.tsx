@@ -15,51 +15,65 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
-import { 
-  ArrowLeft, Shield, Search, AlertTriangle, CheckCircle, 
-  Clock, Upload, FileText, Home, Calendar, Filter, Plus,
-  Flame, Zap, Bug, FileCheck
+import {
+  ArrowLeft,
+  Shield,
+  Search,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Upload,
+  FileText,
+  Home,
+  Calendar,
+  Filter,
+  Plus,
+  Flame,
+  Zap,
+  Bug,
+  FileCheck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
+import { containerVariants, itemVariants } from "@/lib/animations";
 import { toast } from "sonner";
 
 // Compliance types with UK requirements
 const complianceTypes = {
-  gas_safety: { 
-    label: "Gas Safety Certificate", 
-    icon: Flame, 
+  gas_safety: {
+    label: "Gas Safety Certificate",
+    icon: Flame,
     color: "orange",
     renewalPeriod: "12 months",
-    required: "All properties with gas appliances"
+    required: "All properties with gas appliances",
   },
-  eicr: { 
-    label: "EICR (Electrical)", 
-    icon: Zap, 
+  eicr: {
+    label: "EICR (Electrical)",
+    icon: Zap,
     color: "yellow",
     renewalPeriod: "5 years",
-    required: "All rental properties"
+    required: "All rental properties",
   },
-  epc: { 
-    label: "EPC Certificate", 
-    icon: FileCheck, 
+  epc: {
+    label: "EPC Certificate",
+    icon: FileCheck,
     color: "green",
     renewalPeriod: "10 years",
-    required: "Minimum rating E for rentals"
+    required: "Minimum rating E for rentals",
   },
-  legionella: { 
-    label: "Legionella Risk Assessment", 
-    icon: Bug, 
+  legionella: {
+    label: "Legionella Risk Assessment",
+    icon: Bug,
     color: "blue",
     renewalPeriod: "2 years recommended",
-    required: "All rental properties"
+    required: "All rental properties",
   },
-  smoke_co: { 
-    label: "Smoke & CO Alarms", 
-    icon: Shield, 
+  smoke_co: {
+    label: "Smoke & CO Alarms",
+    icon: Shield,
     color: "red",
     renewalPeriod: "Annual check",
-    required: "All rental properties"
+    required: "All rental properties",
   },
 };
 
@@ -76,19 +90,6 @@ interface ComplianceRecord {
   document_url: string | null;
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.05 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
-
 export default function CompliancePage() {
   const { userId, role } = useRole();
   const [records, setRecords] = useState<ComplianceRecord[]>([]);
@@ -101,23 +102,27 @@ export default function CompliancePage() {
     async function fetchCompliance() {
       const supabase = createClient();
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           setIsLoading(false);
           return;
         }
 
         const { data, error } = await supabase
-          .from('compliance_records')
-          .select(`
+          .from("compliance_records")
+          .select(
+            `
             *,
             properties!inner(address_line_1, address_line_2, city, postcode, landlord_id)
-          `)
-          .eq('properties.landlord_id', user.id);
+          `,
+          )
+          .eq("properties.landlord_id", user.id);
 
         if (error) {
-          console.error('Error fetching compliance records:', error);
-          toast.error('Failed to load compliance records');
+          console.error("Error fetching compliance records:", error);
+          toast.error("Failed to load compliance records");
           setIsLoading(false);
           return;
         }
@@ -129,35 +134,35 @@ export default function CompliancePage() {
           const prop = r.properties;
           const address = [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
             .filter(Boolean)
-            .join(', ');
+            .join(", ");
 
           // Compute status from expiry date
-          let status = 'valid';
+          let status = "valid";
           const expiry = new Date(r.expiry_date);
           if (expiry < now) {
-            status = 'expired';
+            status = "expired";
           } else if (expiry <= thirtyDaysFromNow) {
-            status = 'expiring_soon';
+            status = "expiring_soon";
           }
 
           return {
             id: r.id,
             property_id: r.property_id,
             property_address: address,
-            compliance_type: r.compliance_type || r.type || 'gas_safety',
-            issue_date: r.issue_date || r.created_at?.split('T')[0] || '',
+            compliance_type: r.compliance_type || r.type || "gas_safety",
+            issue_date: r.issue_date || r.created_at?.split("T")[0] || "",
             expiry_date: r.expiry_date,
             status,
-            certificate_number: r.certificate_number || '',
-            inspector_name: r.inspector_name || '',
+            certificate_number: r.certificate_number || "",
+            inspector_name: r.inspector_name || "",
             document_url: r.document_url || null,
           };
         });
 
         setRecords(mapped);
       } catch (err) {
-        console.error('Error:', err);
-        toast.error('Failed to load compliance records');
+        console.error("Error:", err);
+        toast.error("Failed to load compliance records");
       } finally {
         setIsLoading(false);
       }
@@ -174,12 +179,14 @@ export default function CompliancePage() {
       try {
         const { data, error } = await supabase
           .from("compliance_records")
-          .select(`
+          .select(
+            `
             *,
             properties (
               id, address_line_1, address_line_2, city, postcode, landlord_id
             )
-          `)
+          `,
+          )
           .order("expiry_date", { ascending: true });
 
         if (error) throw error;
@@ -238,29 +245,29 @@ export default function CompliancePage() {
     fetchCompliance();
   }, [userId]);
 
-  const filteredRecords = records.filter(r => {
-    const matchesSearch = 
+  const filteredRecords = records.filter((r) => {
+    const matchesSearch =
       r.property_address.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.certificate_number.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesType = !filterType || r.compliance_type === filterType;
     const matchesStatus = !filterStatus || r.status === filterStatus;
-    
+
     return matchesSearch && matchesType && matchesStatus;
   });
 
   // Calculate stats
   const stats = {
     total: records.length,
-    valid: records.filter(r => r.status === "valid").length,
-    expiring: records.filter(r => r.status === "expiring_soon").length,
-    expired: records.filter(r => r.status === "expired").length,
+    valid: records.filter((r) => r.status === "valid").length,
+    expiring: records.filter((r) => r.status === "expiring_soon").length,
+    expired: records.filter((r) => r.status === "expired").length,
   };
 
   // Group by status for priority display
-  const expiringSoon = filteredRecords.filter(r => r.status === "expiring_soon");
-  const expired = filteredRecords.filter(r => r.status === "expired");
-  const valid = filteredRecords.filter(r => r.status === "valid");
+  const expiringSoon = filteredRecords.filter((r) => r.status === "expiring_soon");
+  const expired = filteredRecords.filter((r) => r.status === "expired");
+  const valid = filteredRecords.filter((r) => r.status === "valid");
 
   if (isLoading) {
     return (
@@ -277,7 +284,7 @@ export default function CompliancePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50"
@@ -286,7 +293,9 @@ export default function CompliancePage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Shield className="w-6 h-6 text-blue-500" />
-              <h1 className="text-xl font-bold text-slate-800 dark:text-white">Compliance Tracker</h1>
+              <h1 className="text-xl font-bold text-slate-800 dark:text-white">
+                Compliance Tracker
+              </h1>
             </div>
           </div>
           <Button className="gap-2">
@@ -298,7 +307,7 @@ export default function CompliancePage() {
 
       <main className="container mx-auto px-4 py-8">
         {/* Stats */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
@@ -363,7 +372,8 @@ export default function CompliancePage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-amber-700 dark:text-amber-400">
-                      {expiringSoon.length} Certificate{expiringSoon.length > 1 ? "s" : ""} Expiring Soon
+                      {expiringSoon.length} Certificate{expiringSoon.length > 1 ? "s" : ""} Expiring
+                      Soon
                     </h3>
                     <p className="text-sm text-amber-600/80">
                       Schedule renewals to avoid compliance issues.
@@ -376,7 +386,7 @@ export default function CompliancePage() {
         )}
 
         {/* Search & Filter */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
@@ -391,18 +401,26 @@ export default function CompliancePage() {
               className="pl-10"
             />
           </div>
-          <Select value={filterType || "all"} onValueChange={(v) => setFilterType(v === "all" ? null : v)}>
+          <Select
+            value={filterType || "all"}
+            onValueChange={(v) => setFilterType(v === "all" ? null : v)}
+          >
             <SelectTrigger className="w-48">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
               {Object.entries(complianceTypes).map(([key, value]) => (
-                <SelectItem key={key} value={key}>{value.label}</SelectItem>
+                <SelectItem key={key} value={key}>
+                  {value.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={filterStatus || "all"} onValueChange={(v) => setFilterStatus(v === "all" ? null : v)}>
+          <Select
+            value={filterStatus || "all"}
+            onValueChange={(v) => setFilterStatus(v === "all" ? null : v)}
+          >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
@@ -447,7 +465,9 @@ export default function CompliancePage() {
           transition={{ delay: 0.3 }}
           className="mt-12"
         >
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">UK Landlord Requirements</h2>
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">
+            UK Landlord Requirements
+          </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(complianceTypes).map(([key, info]) => {
               const Icon = info.icon;
@@ -458,12 +478,17 @@ export default function CompliancePage() {
                 blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600",
                 red: "bg-red-100 dark:bg-red-900/30 text-red-600",
               };
-              
+
               return (
-                <Card key={key} className="border-0 shadow-lg bg-white/70 dark:bg-slate-900/70 backdrop-blur">
+                <Card
+                  key={key}
+                  className="border-0 shadow-lg bg-white/70 dark:bg-slate-900/70 backdrop-blur"
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className={`w-10 h-10 rounded-lg ${colorClasses[info.color]} flex items-center justify-center`}>
+                      <div
+                        className={`w-10 h-10 rounded-lg ${colorClasses[info.color]} flex items-center justify-center`}
+                      >
                         <Icon className="w-5 h-5" />
                       </div>
                       <div>
@@ -499,7 +524,9 @@ function ComplianceCard({ record }: { record: ComplianceRecord }) {
   // Calculate days until expiry
   const expiryDate = new Date(record.expiry_date);
   const today = new Date();
-  const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const daysUntilExpiry = Math.ceil(
+    (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
 
   const colorClasses: Record<string, string> = {
     orange: "bg-orange-100 dark:bg-orange-900/30 text-orange-600",
@@ -510,16 +537,14 @@ function ComplianceCard({ record }: { record: ComplianceRecord }) {
   };
 
   return (
-    <motion.div
-      variants={itemVariants}
-      layout
-      whileHover={{ y: -2 }}
-    >
+    <motion.div variants={itemVariants} layout whileHover={{ y: -2 }}>
       <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/70 dark:bg-slate-900/70 backdrop-blur">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             {/* Type Icon */}
-            <div className={`w-12 h-12 rounded-xl ${colorClasses[typeInfo?.color || "blue"]} flex items-center justify-center flex-shrink-0`}>
+            <div
+              className={`w-12 h-12 rounded-xl ${colorClasses[typeInfo?.color || "blue"]} flex items-center justify-center flex-shrink-0`}
+            >
               <Icon className="w-6 h-6" />
             </div>
 
@@ -547,15 +572,12 @@ function ComplianceCard({ record }: { record: ComplianceRecord }) {
                   Expires: {new Date(record.expiry_date).toLocaleDateString("en-GB")}
                 </span>
                 <span>
-                  {daysUntilExpiry > 0 
+                  {daysUntilExpiry > 0
                     ? `${daysUntilExpiry} days remaining`
-                    : `${Math.abs(daysUntilExpiry)} days overdue`
-                  }
+                    : `${Math.abs(daysUntilExpiry)} days overdue`}
                 </span>
                 {record.certificate_number && (
-                  <span className="text-slate-400">
-                    #{record.certificate_number}
-                  </span>
+                  <span className="text-slate-400">#{record.certificate_number}</span>
                 )}
               </div>
             </div>

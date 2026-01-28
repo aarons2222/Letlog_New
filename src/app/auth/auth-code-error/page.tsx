@@ -13,14 +13,16 @@ export default function AuthCodeError() {
     // Check if user is actually authenticated (hash-based auth may have worked)
     const checkAuth = async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (user) {
         // User is authenticated - redirect to dashboard
         router.push("/dashboard");
         return;
       }
-      
+
       setChecking(false);
     };
 

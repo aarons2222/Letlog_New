@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Flag explicit `any` — warn for now, error once types are generated
+      "@typescript-eslint/no-explicit-any": "warn",
+      // Flag console usage — warn to encourage proper error handling
+      "no-console": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;

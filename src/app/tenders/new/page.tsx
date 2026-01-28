@@ -17,18 +17,41 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
-import { 
-  ArrowLeft, Camera, X, CheckCircle2, 
-  Droplets, Zap, Wind, Home, Wrench, AlertTriangle,
-  Send, PoundSterling, Calendar, MapPin, Building2
+import {
+  ArrowLeft,
+  Camera,
+  X,
+  CheckCircle2,
+  Droplets,
+  Zap,
+  Wind,
+  Home,
+  Wrench,
+  AlertTriangle,
+  Send,
+  PoundSterling,
+  Calendar,
+  MapPin,
+  Building2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { containerVariants, itemVariants } from "@/lib/animations";
 import { toast } from "sonner";
 
 const tradeCategories = [
-  { id: "plumbing", label: "Plumbing", icon: Droplets, description: "Leaks, drains, toilets, pipes" },
+  {
+    id: "plumbing",
+    label: "Plumbing",
+    icon: Droplets,
+    description: "Leaks, drains, toilets, pipes",
+  },
   { id: "electrical", label: "Electrical", icon: Zap, description: "Lights, sockets, wiring" },
-  { id: "heating", label: "Heating / Gas", icon: Wind, description: "Boilers, radiators, gas work" },
+  {
+    id: "heating",
+    label: "Heating / Gas",
+    icon: Wind,
+    description: "Boilers, radiators, gas work",
+  },
   { id: "carpentry", label: "Carpentry", icon: Home, description: "Doors, windows, flooring" },
   { id: "general", label: "General Repairs", icon: Wrench, description: "Handyman, misc repairs" },
   { id: "other", label: "Other", icon: AlertTriangle, description: "Anything else" },
@@ -36,27 +59,24 @@ const tradeCategories = [
 
 const urgencyLevels = [
   { id: "low", label: "Low", description: "Within 2 weeks", color: "border-green-300 bg-green-50" },
-  { id: "medium", label: "Medium", description: "Within a week", color: "border-amber-300 bg-amber-50" },
-  { id: "high", label: "Urgent", description: "Within 48 hours", color: "border-red-300 bg-red-50" },
+  {
+    id: "medium",
+    label: "Medium",
+    description: "Within a week",
+    color: "border-amber-300 bg-amber-50",
+  },
+  {
+    id: "high",
+    label: "Urgent",
+    description: "Within 48 hours",
+    color: "border-red-300 bg-red-50",
+  },
 ];
 
 interface PropertyOption {
   id: string;
   address: string;
 }
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
 
 export default function NewTenderPage() {
   return (
@@ -88,29 +108,33 @@ function NewTenderContent() {
     async function fetchProperties() {
       const supabase = createClient();
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
-          .from('properties')
-          .select('id, address_line_1, address_line_2, city, postcode')
-          .eq('landlord_id', user.id)
-          .eq('is_active', true);
+          .from("properties")
+          .select("id, address_line_1, address_line_2, city, postcode")
+          .eq("landlord_id", user.id)
+          .eq("is_active", true);
 
         if (error) {
-          console.error('Error fetching properties:', error);
-          toast.error('Failed to load properties');
+          console.error("Error fetching properties:", error);
+          toast.error("Failed to load properties");
           return;
         }
 
         const mapped: PropertyOption[] = (data || []).map((p: any) => ({
           id: p.id,
-          address: [p.address_line_1, p.address_line_2, p.city, p.postcode].filter(Boolean).join(', '),
+          address: [p.address_line_1, p.address_line_2, p.city, p.postcode]
+            .filter(Boolean)
+            .join(", "),
         }));
 
         setProperties(mapped);
       } catch (err) {
-        console.error('Error:', err);
+        console.error("Error:", err);
       }
     }
 
@@ -120,10 +144,10 @@ function NewTenderContent() {
   const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach(file => {
+      Array.from(files).forEach((file) => {
         const reader = new FileReader();
         reader.onload = (event) => {
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
             photos: [...prev.photos, event.target?.result as string],
           }));
@@ -134,7 +158,7 @@ function NewTenderContent() {
   }, []);
 
   const removePhoto = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       photos: prev.photos.filter((_, i) => i !== index),
     }));
@@ -143,36 +167,36 @@ function NewTenderContent() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
-      toast.error('Please log in');
+      toast.error("Please log in");
       setIsSubmitting(false);
       return;
     }
 
     // Get the selected property's postcode
-    const selectedProp = properties.find(p => p.id === formData.property_id);
-    const postcode = selectedProp?.address.split(', ').pop() || '';
+    const selectedProp = properties.find((p) => p.id === formData.property_id);
+    const postcode = selectedProp?.address.split(", ").pop() || "";
 
-    const { error } = await supabase
-      .from('tenders')
-      .insert({
-        property_id: formData.property_id,
-        landlord_id: user.id,
-        title: formData.title,
-        description: formData.description,
-        trade_category: formData.trade,
-        budget_min: Number(formData.budget_min) || 0,
-        budget_max: Number(formData.budget_max) || 0,
-        deadline: formData.deadline || null,
-        postcode,
-      });
+    const { error } = await supabase.from("tenders").insert({
+      property_id: formData.property_id,
+      landlord_id: user.id,
+      title: formData.title,
+      description: formData.description,
+      trade_category: formData.trade,
+      budget_min: Number(formData.budget_min) || 0,
+      budget_max: Number(formData.budget_max) || 0,
+      deadline: formData.deadline || null,
+      postcode,
+    });
 
     setIsSubmitting(false);
 
     if (error) {
-      console.error('Error creating tender:', error);
-      toast.error('Failed to post job');
+      console.error("Error creating tender:", error);
+      toast.error("Failed to post job");
       return;
     }
 
@@ -186,8 +210,8 @@ function NewTenderContent() {
     return true;
   };
 
-  const selectedProperty = properties.find(p => p.id === formData.property_id);
-  const selectedTrade = tradeCategories.find(t => t.id === formData.trade);
+  const selectedProperty = properties.find((p) => p.id === formData.property_id);
+  const selectedTrade = tradeCategories.find((t) => t.id === formData.trade);
 
   if (isSuccess) {
     return (
@@ -223,7 +247,7 @@ function NewTenderContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50"
@@ -245,7 +269,7 @@ function NewTenderContent() {
                 <p className="text-sm text-slate-500">Step {step} of 4</p>
               </div>
             </div>
-            
+
             {/* Progress */}
             <div className="hidden sm:flex items-center gap-2">
               {[1, 2, 3, 4].map((s) => (
@@ -288,7 +312,9 @@ function NewTenderContent() {
                     {properties.map((property) => (
                       <motion.button
                         key={property.id}
-                        onClick={() => setFormData(prev => ({ ...prev, property_id: property.id }))}
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, property_id: property.id }))
+                        }
                         className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                           formData.property_id === property.id
                             ? "border-blue-500 bg-blue-50"
@@ -298,9 +324,13 @@ function NewTenderContent() {
                         whileTap={{ scale: 0.99 }}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                            formData.property_id === property.id ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-500"
-                          }`}>
+                          <div
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              formData.property_id === property.id
+                                ? "bg-blue-500 text-white"
+                                : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
                             <Building2 className="w-5 h-5" />
                           </div>
                           <span className="font-medium text-slate-800">{property.address}</span>
@@ -317,7 +347,7 @@ function NewTenderContent() {
                     {tradeCategories.map((trade) => (
                       <motion.button
                         key={trade.id}
-                        onClick={() => setFormData(prev => ({ ...prev, trade: trade.id }))}
+                        onClick={() => setFormData((prev) => ({ ...prev, trade: trade.id }))}
                         className={`p-4 rounded-xl border-2 text-left transition-all ${
                           formData.trade === trade.id
                             ? "border-blue-500 bg-blue-50"
@@ -368,7 +398,7 @@ function NewTenderContent() {
                     id="title"
                     placeholder="e.g., Fix leaking tap in bathroom"
                     value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                     className="mt-2 h-12"
                   />
                 </div>
@@ -379,7 +409,9 @@ function NewTenderContent() {
                     id="description"
                     placeholder="Describe the problem, what you've tried, access details, any specific requirements..."
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, description: e.target.value }))
+                    }
                     className="mt-2 min-h-[150px]"
                   />
                 </div>
@@ -390,7 +422,7 @@ function NewTenderContent() {
                     {urgencyLevels.map((level) => (
                       <motion.button
                         key={level.id}
-                        onClick={() => setFormData(prev => ({ ...prev, urgency: level.id }))}
+                        onClick={() => setFormData((prev) => ({ ...prev, urgency: level.id }))}
                         className={`p-3 rounded-xl border-2 text-center transition-all ${
                           formData.urgency === level.id
                             ? `${level.color} border-current`
@@ -430,7 +462,9 @@ function NewTenderContent() {
                   <Label className="text-base font-medium mb-3 block">Budget range</Label>
                   <div className="flex items-center gap-4">
                     <div className="flex-1">
-                      <Label htmlFor="budget_min" className="text-sm text-slate-500">Minimum</Label>
+                      <Label htmlFor="budget_min" className="text-sm text-slate-500">
+                        Minimum
+                      </Label>
                       <div className="relative mt-1">
                         <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
@@ -438,14 +472,18 @@ function NewTenderContent() {
                           type="number"
                           placeholder="50"
                           value={formData.budget_min}
-                          onChange={(e) => setFormData(prev => ({ ...prev, budget_min: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, budget_min: e.target.value }))
+                          }
                           className="pl-10 h-12"
                         />
                       </div>
                     </div>
                     <span className="text-slate-400 mt-6">to</span>
                     <div className="flex-1">
-                      <Label htmlFor="budget_max" className="text-sm text-slate-500">Maximum</Label>
+                      <Label htmlFor="budget_max" className="text-sm text-slate-500">
+                        Maximum
+                      </Label>
                       <div className="relative mt-1">
                         <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
@@ -453,7 +491,9 @@ function NewTenderContent() {
                           type="number"
                           placeholder="200"
                           value={formData.budget_max}
-                          onChange={(e) => setFormData(prev => ({ ...prev, budget_max: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, budget_max: e.target.value }))
+                          }
                           className="pl-10 h-12"
                         />
                       </div>
@@ -469,12 +509,16 @@ function NewTenderContent() {
                       id="deadline"
                       type="date"
                       value={formData.deadline}
-                      onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, deadline: e.target.value }))
+                      }
                       className="pl-10 h-12"
-                      min={new Date().toISOString().split('T')[0]}
+                      min={new Date().toISOString().split("T")[0]}
                     />
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Contractors can submit quotes until this date</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Contractors can submit quotes until this date
+                  </p>
                 </div>
               </motion.div>
             </motion.div>
@@ -572,19 +616,22 @@ function NewTenderContent() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Trade</span>
-                      <span className="font-medium text-slate-800 capitalize">{selectedTrade?.label || "—"}</span>
+                      <span className="font-medium text-slate-800 capitalize">
+                        {selectedTrade?.label || "—"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Title</span>
-                      <span className="font-medium text-slate-800 truncate max-w-[200px]">{formData.title || "—"}</span>
+                      <span className="font-medium text-slate-800 truncate max-w-[200px]">
+                        {formData.title || "—"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Budget</span>
                       <span className="font-medium text-green-600">
-                        {formData.budget_min && formData.budget_max 
+                        {formData.budget_min && formData.budget_max
                           ? `£${formData.budget_min} - £${formData.budget_max}`
-                          : "—"
-                        }
+                          : "—"}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -611,7 +658,7 @@ function NewTenderContent() {
         >
           <Button
             variant="outline"
-            onClick={() => setStep(s => s - 1)}
+            onClick={() => setStep((s) => s - 1)}
             disabled={step === 1}
             className="gap-2"
           >
@@ -621,18 +668,14 @@ function NewTenderContent() {
 
           {step < 4 ? (
             <Button
-              onClick={() => setStep(s => s + 1)}
+              onClick={() => setStep((s) => s + 1)}
               disabled={!canProceed()}
               className="gap-2"
             >
               Continue
             </Button>
           ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="gap-2 min-w-[140px]"
-            >
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2 min-w-[140px]">
               {isSubmitting ? (
                 <motion.div
                   animate={{ rotate: 360 }}

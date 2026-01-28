@@ -40,7 +40,7 @@ export function canAccessRoute(role: Role, path: string): boolean {
   // Always allow access to non-protected routes (public pages, auth, etc.)
   const protectedPrefixes = routePermissions.map((r) => r.path);
   const matchedPermission = protectedPrefixes.find(
-    (prefix) => path === prefix || path.startsWith(prefix + "/")
+    (prefix) => path === prefix || path.startsWith(prefix + "/"),
   );
 
   // If the route isn't in our permissions list, allow access (public page)

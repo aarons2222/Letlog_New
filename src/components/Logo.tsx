@@ -15,10 +15,10 @@ const sizes = {
 
 export function Logo({ size = "md", showText = true, className = "" }: LogoProps) {
   const { icon, text } = sizes[size];
-  
+
   return (
     <Link href="/" className={`inline-flex items-center gap-3 ${className}`}>
-      <div 
+      <div
         className="relative flex-shrink-0 rounded-xl overflow-hidden shadow-lg"
         style={{ width: icon, height: icon }}
       >
@@ -33,7 +33,9 @@ export function Logo({ size = "md", showText = true, className = "" }: LogoProps
       </div>
       {showText && (
         <span className={`font-semibold tracking-tight ${text}`}>
-          <span className="bg-gradient-to-r from-rose-500 to-orange-500 bg-clip-text text-transparent">Let</span>
+          <span className="bg-gradient-to-r from-rose-500 to-orange-500 bg-clip-text text-transparent">
+            Let
+          </span>
           <span className="text-slate-900 dark:text-white">Log</span>
         </span>
       )}
@@ -43,7 +45,7 @@ export function Logo({ size = "md", showText = true, className = "" }: LogoProps
 
 export function LogoIcon({ size = 40 }: { size?: number }) {
   return (
-    <div 
+    <div
       className="relative flex-shrink-0 rounded-xl overflow-hidden shadow-lg"
       style={{ width: size, height: size }}
     >

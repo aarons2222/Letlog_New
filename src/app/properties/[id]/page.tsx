@@ -8,8 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  ArrowLeft, Home, MapPin, Bed, Bath, Building2, Edit,
-  Users, FileCheck, AlertTriangle, Calendar, ClipboardList
+  ArrowLeft,
+  Home,
+  MapPin,
+  Bed,
+  Bath,
+  Building2,
+  Edit,
+  Users,
+  FileCheck,
+  AlertTriangle,
+  Calendar,
+  ClipboardList,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -155,15 +165,17 @@ export default function PropertyDetailPage() {
     property.city,
     property.county,
     property.postcode,
-  ].filter(Boolean).join(", ");
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const propertyTypeLabel = property.property_type
     ? property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)
     : "Property";
 
   const now = new Date();
-  const openIssues = issues.filter(i => i.status !== "closed" && i.status !== "resolved");
-  const activeTenancies = tenancies.filter(t => t.status === "active");
+  const openIssues = issues.filter((i) => i.status !== "closed" && i.status !== "resolved");
+  const activeTenancies = tenancies.filter((t) => t.status === "active");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -205,7 +217,9 @@ export default function PropertyDetailPage() {
                   <Home className="w-10 h-10 text-blue-500 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{fullAddress}</h2>
+                  <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                    {fullAddress}
+                  </h2>
                   <p className="text-slate-500 flex items-center gap-1 mt-1">
                     <Building2 className="w-4 h-4" />
                     {propertyTypeLabel}
@@ -238,7 +252,11 @@ export default function PropertyDetailPage() {
         </motion.div>
 
         {/* Tenancies */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
           <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -248,14 +266,17 @@ export default function PropertyDetailPage() {
                 <div>
                   <CardTitle>Tenancies</CardTitle>
                   <CardDescription>
-                    {activeTenancies.length} active tenanc{activeTenancies.length === 1 ? "y" : "ies"}
+                    {activeTenancies.length} active tenanc
+                    {activeTenancies.length === 1 ? "y" : "ies"}
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               {tenancies.length === 0 ? (
-                <p className="text-sm text-slate-500 py-4 text-center">No tenancies found for this property.</p>
+                <p className="text-sm text-slate-500 py-4 text-center">
+                  No tenancies found for this property.
+                </p>
               ) : (
                 <div className="space-y-3">
                   {tenancies.map((tenancy) => {
@@ -272,7 +293,11 @@ export default function PropertyDetailPage() {
                       >
                         <div>
                           <div className="flex items-center gap-2">
-                            <Badge className={statusColors[tenancy.status] || "bg-slate-100 text-slate-600"}>
+                            <Badge
+                              className={
+                                statusColors[tenancy.status] || "bg-slate-100 text-slate-600"
+                              }
+                            >
                               {tenancy.status.charAt(0).toUpperCase() + tenancy.status.slice(1)}
                             </Badge>
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -282,11 +307,13 @@ export default function PropertyDetailPage() {
                           <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
                             {new Date(tenancy.start_date).toLocaleDateString("en-GB")}
-                            {tenancy.end_date && ` — ${new Date(tenancy.end_date).toLocaleDateString("en-GB")}`}
+                            {tenancy.end_date &&
+                              ` — ${new Date(tenancy.end_date).toLocaleDateString("en-GB")}`}
                           </p>
                         </div>
                         <div className="text-right text-xs text-slate-500">
-                          {tenancy.tenancy_tenants?.length || 0} tenant{(tenancy.tenancy_tenants?.length || 0) !== 1 ? "s" : ""}
+                          {tenancy.tenancy_tenants?.length || 0} tenant
+                          {(tenancy.tenancy_tenants?.length || 0) !== 1 ? "s" : ""}
                         </div>
                       </div>
                     );
@@ -298,7 +325,11 @@ export default function PropertyDetailPage() {
         </motion.div>
 
         {/* Compliance Records */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
           <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -307,13 +338,17 @@ export default function PropertyDetailPage() {
                 </div>
                 <div>
                   <CardTitle>Compliance Records</CardTitle>
-                  <CardDescription>{complianceRecords.length} record{complianceRecords.length !== 1 ? "s" : ""}</CardDescription>
+                  <CardDescription>
+                    {complianceRecords.length} record{complianceRecords.length !== 1 ? "s" : ""}
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               {complianceRecords.length === 0 ? (
-                <p className="text-sm text-slate-500 py-4 text-center">No compliance records found.</p>
+                <p className="text-sm text-slate-500 py-4 text-center">
+                  No compliance records found.
+                </p>
               ) : (
                 <div className="space-y-3">
                   {complianceRecords.map((record) => {
@@ -329,7 +364,9 @@ export default function PropertyDetailPage() {
                       >
                         <div>
                           <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            {record.record_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                            {record.record_type
+                              .replace(/_/g, " ")
+                              .replace(/\b\w/g, (c) => c.toUpperCase())}
                           </p>
                           <p className="text-xs text-slate-500 mt-0.5">
                             Issued: {new Date(record.issue_date).toLocaleDateString("en-GB")}
@@ -341,8 +378,8 @@ export default function PropertyDetailPage() {
                               isExpired
                                 ? "bg-red-100 text-red-700"
                                 : isExpiring
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-green-100 text-green-700"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-green-100 text-green-700"
                             }
                           >
                             {isExpired && <AlertTriangle className="w-3 h-3 mr-1" />}
@@ -363,7 +400,11 @@ export default function PropertyDetailPage() {
         </motion.div>
 
         {/* Open Issues */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
           <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -373,7 +414,8 @@ export default function PropertyDetailPage() {
                 <div>
                   <CardTitle>Issues</CardTitle>
                   <CardDescription>
-                    {openIssues.length} open issue{openIssues.length !== 1 ? "s" : ""} · {issues.length} total
+                    {openIssues.length} open issue{openIssues.length !== 1 ? "s" : ""} ·{" "}
+                    {issues.length} total
                   </CardDescription>
                 </div>
               </div>
@@ -402,19 +444,29 @@ export default function PropertyDetailPage() {
                         className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"
                       >
                         <div>
-                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{issue.title}</p>
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            {issue.title}
+                          </p>
                           {issue.description && (
-                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{issue.description}</p>
+                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                              {issue.description}
+                            </p>
                           )}
                           <p className="text-xs text-slate-400 mt-1">
                             {new Date(issue.created_at).toLocaleDateString("en-GB")}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge className={priorityColors[issue.priority] || "bg-slate-100 text-slate-600"}>
+                          <Badge
+                            className={
+                              priorityColors[issue.priority] || "bg-slate-100 text-slate-600"
+                            }
+                          >
                             {issue.priority}
                           </Badge>
-                          <Badge className={statusColors[issue.status] || "bg-slate-100 text-slate-600"}>
+                          <Badge
+                            className={statusColors[issue.status] || "bg-slate-100 text-slate-600"}
+                          >
                             {issue.status.replace(/_/g, " ")}
                           </Badge>
                         </div>

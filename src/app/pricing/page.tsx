@@ -1,7 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, Sparkles } from "lucide-react";
 
@@ -72,18 +79,30 @@ export default function PricingPage() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/logo.svg" alt="LetLog" width={40} height={40} className="rounded-xl shadow-lg" />
+            <Image
+              src="/logo.svg"
+              alt="LetLog"
+              width={40}
+              height={40}
+              className="rounded-xl shadow-lg"
+            />
             <span className="font-semibold text-xl tracking-tight">
-              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">Let</span>
+              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">
+                Let
+              </span>
               <span>Log</span>
             </span>
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/login">
-              <Button variant="ghost" className="rounded-full px-5">Sign In</Button>
+              <Button variant="ghost" className="rounded-full px-5">
+                Sign In
+              </Button>
             </Link>
             <Link href="/signup">
-              <Button className="rounded-full px-5 bg-slate-900 hover:bg-slate-800">Get Started</Button>
+              <Button className="rounded-full px-5 bg-slate-900 hover:bg-slate-800">
+                Get Started
+              </Button>
             </Link>
           </div>
         </div>
@@ -106,12 +125,10 @@ export default function PricingPage() {
         <div className="container mx-auto px-6">
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {plans.map((plan) => (
-              <Card 
-                key={plan.id} 
+              <Card
+                key={plan.id}
                 className={`rounded-2xl relative flex flex-col h-full ${
-                  plan.popular 
-                    ? 'border-2 border-[#E8998D] shadow-xl' 
-                    : 'border border-slate-200'
+                  plan.popular ? "border-2 border-[#E8998D] shadow-xl" : "border border-slate-200"
                 }`}
               >
                 {plan.popular && (
@@ -142,11 +159,11 @@ export default function PricingPage() {
                 </CardContent>
                 <CardFooter className="mt-auto">
                   <Link href={plan.ctaLink} className="w-full">
-                    <Button 
+                    <Button
                       className={`w-full rounded-xl ${
-                        plan.popular 
-                          ? 'bg-gradient-to-r from-[#E8998D] to-[#F4A261] hover:opacity-90' 
-                          : 'bg-slate-900 hover:bg-slate-800'
+                        plan.popular
+                          ? "bg-gradient-to-r from-[#E8998D] to-[#F4A261] hover:opacity-90"
+                          : "bg-slate-900 hover:bg-slate-800"
                       }`}
                     >
                       {plan.cta}

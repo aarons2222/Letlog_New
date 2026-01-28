@@ -22,9 +22,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <RoleProvider>
-          <AppShellWrapper>
-            {children}
-          </AppShellWrapper>
+          <AppShellWrapper>{children}</AppShellWrapper>
         </RoleProvider>
         <Toaster />
       </body>

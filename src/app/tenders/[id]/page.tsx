@@ -20,10 +20,22 @@ import {
 } from "@/components/ui/dialog";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { 
-  ArrowLeft, MapPin, Clock, PoundSterling, Calendar, User,
-  AlertTriangle, Send, CheckCircle, FileText, Star, Shield,
-  Info, Wrench, Lock
+import {
+  ArrowLeft,
+  MapPin,
+  Clock,
+  PoundSterling,
+  Calendar,
+  User,
+  AlertTriangle,
+  Send,
+  CheckCircle,
+  FileText,
+  Star,
+  Shield,
+  Info,
+  Wrench,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -75,18 +87,18 @@ interface Quote {
 type UserRole = "landlord" | "tenant" | "contractor";
 
 function computeUrgency(deadline: string | null): string {
-  if (!deadline) return 'low';
+  if (!deadline) return "low";
   const daysUntil = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (daysUntil <= 2) return 'high';
-  if (daysUntil <= 7) return 'medium';
-  return 'low';
+  if (daysUntil <= 2) return "high";
+  if (daysUntil <= 7) return "medium";
+  return "low";
 }
 
 export default function TenderDetailPage() {
   const params = useParams();
   const tenderId = params.id as string;
   const router = useRouter();
-  
+
   const [tender, setTender] = useState<TenderDetail | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,13 +118,15 @@ export default function TenderDetailPage() {
       const supabase = createClient();
       try {
         // Get current user and role
-        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
         if (authUser) {
           setCurrentUserId(authUser.id);
           const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', authUser.id)
+            .from("profiles")
+            .select("role")
+            .eq("id", authUser.id)
             .single();
           if (profile?.role) {
             setCurrentUserRole(profile.role as UserRole);
@@ -121,8 +135,9 @@ export default function TenderDetailPage() {
 
         // Fetch tender with property, landlord, and quotes
         const { data, error } = await supabase
-          .from('tenders')
-          .select(`
+          .from("tenders")
+          .select(
+            `
             *,
             properties(address_line_1, address_line_2, city, postcode, property_type, bedrooms),
             profiles:landlord_id(id, full_name),
@@ -130,46 +145,51 @@ export default function TenderDetailPage() {
               id, amount, message, status, available_start_date, created_at, contractor_id,
               profiles:contractor_id(id, full_name, contractor_profiles(average_rating, total_reviews))
             )
-          `)
-          .eq('id', tenderId)
+          `,
+          )
+          .eq("id", tenderId)
           .single();
 
         if (error || !data) {
-          console.error('Error fetching tender:', error);
-          toast.error('Failed to load job details');
+          console.error("Error fetching tender:", error);
+          toast.error("Failed to load job details");
           setIsLoading(false);
           return;
         }
 
         const prop = data.properties;
         const address = prop
-          ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode].filter(Boolean).join(', ')
-          : 'Unknown';
-        const postcode = prop?.postcode || '';
+          ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+              .filter(Boolean)
+              .join(", ")
+          : "Unknown";
+        const postcode = prop?.postcode || "";
 
         // Count landlord's total tenders
         const { count: jobsPosted } = await supabase
-          .from('tenders')
-          .select('*', { count: 'exact', head: true })
-          .eq('landlord_id', data.landlord_id);
+          .from("tenders")
+          .select("*", { count: "exact", head: true })
+          .eq("landlord_id", data.landlord_id);
 
         // Fetch linked issue details if issue_id exists (for contractor context)
         let issueData = null;
         if (data.issue_id) {
           const { data: issue } = await supabase
-            .from('issues')
-            .select('id, title, description, location_in_property, priority, access_instructions, preferred_times')
-            .eq('id', data.issue_id)
+            .from("issues")
+            .select(
+              "id, title, description, location_in_property, priority, access_instructions, preferred_times",
+            )
+            .eq("id", data.issue_id)
             .single();
           if (issue) {
             issueData = {
               id: issue.id,
-              title: issue.title || '',
-              description: issue.description || '',
-              location_in_property: issue.location_in_property || '',
-              priority: issue.priority || 'medium',
-              access_instructions: issue.access_instructions || '',
-              preferred_times: issue.preferred_times || '',
+              title: issue.title || "",
+              description: issue.description || "",
+              location_in_property: issue.location_in_property || "",
+              priority: issue.priority || "medium",
+              access_instructions: issue.access_instructions || "",
+              preferred_times: issue.preferred_times || "",
             };
           }
         }
@@ -177,18 +197,18 @@ export default function TenderDetailPage() {
         setTender({
           id: data.id,
           title: data.title,
-          description: data.description || '',
+          description: data.description || "",
           property_address: address,
           property_postcode: postcode,
-          property_type: prop ? `${prop.bedrooms || 0}-bed ${prop.property_type}` : 'Property',
-          trade_required: data.trade_category || 'general',
+          property_type: prop ? `${prop.bedrooms || 0}-bed ${prop.property_type}` : "Property",
+          trade_required: data.trade_category || "general",
           budget_min: Number(data.budget_min) || 0,
           budget_max: Number(data.budget_max) || 0,
-          deadline: data.deadline || '',
-          status: data.status || 'open',
+          deadline: data.deadline || "",
+          status: data.status || "open",
           quotes_count: data.quotes?.length || 0,
-          posted_date: data.created_at ? new Date(data.created_at).toISOString().split('T')[0] : '',
-          landlord_name: data.profiles?.full_name || 'Landlord',
+          posted_date: data.created_at ? new Date(data.created_at).toISOString().split("T")[0] : "",
+          landlord_name: data.profiles?.full_name || "Landlord",
           landlord_id: data.landlord_id,
           landlord_rating: 4.5,
           landlord_jobs_posted: jobsPosted || 0,
@@ -201,21 +221,21 @@ export default function TenderDetailPage() {
         // Map quotes
         const mappedQuotes: Quote[] = (data.quotes || []).map((q: any) => ({
           id: q.id,
-          contractor_id: q.contractor_id || '',
-          contractor_name: q.profiles?.full_name || 'Contractor',
+          contractor_id: q.contractor_id || "",
+          contractor_name: q.profiles?.full_name || "Contractor",
           amount: Number(q.amount) || 0,
-          message: q.message || '',
+          message: q.message || "",
           rating: q.profiles?.contractor_profiles?.average_rating || 0,
           reviews: q.profiles?.contractor_profiles?.total_reviews || 0,
           available_from: q.available_start_date
-            ? new Date(q.available_start_date).toLocaleDateString('en-GB')
-            : 'Flexible',
+            ? new Date(q.available_start_date).toLocaleDateString("en-GB")
+            : "Flexible",
         }));
 
         setQuotes(mappedQuotes);
       } catch (err) {
-        console.error('Error:', err);
-        toast.error('Failed to load job details');
+        console.error("Error:", err);
+        toast.error("Failed to load job details");
       } finally {
         setIsLoading(false);
       }
@@ -233,22 +253,22 @@ export default function TenderDetailPage() {
     setIsSubmitting(true);
 
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       toast.error("Please log in to submit a quote");
       setIsSubmitting(false);
       return;
     }
 
-    const { error } = await supabase
-      .from('quotes')
-      .insert({
-        tender_id: tenderId,
-        contractor_id: user.id,
-        amount: Number(quoteData.amount),
-        message: quoteData.description,
-        available_start_date: quoteData.available_from,
-      });
+    const { error } = await supabase.from("quotes").insert({
+      tender_id: tenderId,
+      contractor_id: user.id,
+      amount: Number(quoteData.amount),
+      message: quoteData.description,
+      available_start_date: quoteData.available_from,
+    });
 
     setIsSubmitting(false);
 
@@ -265,7 +285,10 @@ export default function TenderDetailPage() {
   const isLandlord = currentUserRole === "landlord" && currentUserId === tender?.landlord_id;
   const isContractor = currentUserRole === "contractor";
   const isTenant = currentUserRole === "tenant";
-  const isJobAwarded = tender?.status === "awarded" || tender?.status === "in_progress" || tender?.status === "completed";
+  const isJobAwarded =
+    tender?.status === "awarded" ||
+    tender?.status === "in_progress" ||
+    tender?.status === "completed";
 
   // #7: Quotes visibility rules
   // - Landlord: sees all quotes for their tender
@@ -275,7 +298,7 @@ export default function TenderDetailPage() {
     if (isTenant) return [];
     if (isLandlord) return quotes;
     if (isContractor && currentUserId) {
-      return quotes.filter(q => q.contractor_id === currentUserId);
+      return quotes.filter((q) => q.contractor_id === currentUserId);
     }
     return [];
   })();
@@ -296,7 +319,9 @@ export default function TenderDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-slate-500 mb-4">Job not found</p>
-          <Link href="/tenders"><Button>Back to Jobs</Button></Link>
+          <Link href="/tenders">
+            <Button>Back to Jobs</Button>
+          </Link>
         </div>
       </div>
     );
@@ -316,7 +341,7 @@ export default function TenderDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50"
@@ -356,11 +381,15 @@ export default function TenderDetailPage() {
                         type="number"
                         placeholder="175"
                         value={quoteData.amount}
-                        onChange={(e) => setQuoteData(prev => ({ ...prev, amount: e.target.value }))}
+                        onChange={(e) =>
+                          setQuoteData((prev) => ({ ...prev, amount: e.target.value }))
+                        }
                         className="pl-10"
                       />
                     </div>
-                    <p className="text-xs text-slate-500">Budget: £{tender.budget_min} - £{tender.budget_max}</p>
+                    <p className="text-xs text-slate-500">
+                      Budget: £{tender.budget_min} - £{tender.budget_max}
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -369,7 +398,9 @@ export default function TenderDetailPage() {
                       id="description"
                       placeholder="Describe your approach, experience with this type of work, and what's included in your quote..."
                       value={quoteData.description}
-                      onChange={(e) => setQuoteData(prev => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) =>
+                        setQuoteData((prev) => ({ ...prev, description: e.target.value }))
+                      }
                       rows={4}
                     />
                   </div>
@@ -381,7 +412,9 @@ export default function TenderDetailPage() {
                         id="available_from"
                         type="date"
                         value={quoteData.available_from}
-                        onChange={(e) => setQuoteData(prev => ({ ...prev, available_from: e.target.value }))}
+                        onChange={(e) =>
+                          setQuoteData((prev) => ({ ...prev, available_from: e.target.value }))
+                        }
                       />
                     </div>
                     <div className="space-y-2">
@@ -391,7 +424,9 @@ export default function TenderDetailPage() {
                         type="number"
                         placeholder="3"
                         value={quoteData.warranty_months}
-                        onChange={(e) => setQuoteData(prev => ({ ...prev, warranty_months: e.target.value }))}
+                        onChange={(e) =>
+                          setQuoteData((prev) => ({ ...prev, warranty_months: e.target.value }))
+                        }
                       />
                     </div>
                   </div>
@@ -426,10 +461,7 @@ export default function TenderDetailPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Title & Status */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
                   <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
@@ -438,11 +470,11 @@ export default function TenderDetailPage() {
                   <p className="text-slate-500 flex items-center gap-1">
                     <MapPin className="w-4 h-4" />
                     {/* #1: Show area/postcode for contractors, full address for landlords */}
-                    {isLandlord ? tender.property_address : (
-                      tender.property_postcode
-                        ? `${tender.property_postcode.split(' ')[0]} area`
-                        : tender.property_address
-                    )}
+                    {isLandlord
+                      ? tender.property_address
+                      : tender.property_postcode
+                        ? `${tender.property_postcode.split(" ")[0]} area`
+                        : tender.property_address}
                   </p>
                 </div>
                 <Badge className={`${urgency.color} border`}>
@@ -466,13 +498,18 @@ export default function TenderDetailPage() {
                   <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
                     {tender.description}
                   </p>
-                  
+
                   {tender.requirements.length > 0 && (
                     <div className="mt-6">
-                      <h4 className="font-medium text-slate-800 dark:text-white mb-3">Requirements</h4>
+                      <h4 className="font-medium text-slate-800 dark:text-white mb-3">
+                        Requirements
+                      </h4>
                       <ul className="space-y-2">
                         {tender.requirements.map((req, i) => (
-                          <li key={i} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                          <li
+                            key={i}
+                            className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400"
+                          >
                             <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
                             {req}
                           </li>
@@ -520,7 +557,9 @@ export default function TenderDetailPage() {
                             <MapPin className="w-3 h-3" />
                             Area / Postcode
                           </h4>
-                          <p className="text-slate-700 dark:text-slate-300">{tender.property_postcode}</p>
+                          <p className="text-slate-700 dark:text-slate-300">
+                            {tender.property_postcode}
+                          </p>
                         </div>
                       )}
 
@@ -531,7 +570,9 @@ export default function TenderDetailPage() {
                             <Wrench className="w-3 h-3" />
                             Location in Property
                           </h4>
-                          <p className="text-slate-700 dark:text-slate-300">{tender.issue.location_in_property}</p>
+                          <p className="text-slate-700 dark:text-slate-300">
+                            {tender.issue.location_in_property}
+                          </p>
                         </div>
                       )}
 
@@ -539,13 +580,19 @@ export default function TenderDetailPage() {
                       {tender.issue.priority && (
                         <div>
                           <h4 className="text-sm font-medium text-slate-500 mb-1">Priority</h4>
-                          <Badge className={
-                            tender.issue.priority === 'urgent' ? 'bg-red-100 text-red-700' :
-                            tender.issue.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                            tender.issue.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-slate-100 text-slate-600'
-                          }>
-                            {tender.issue.priority.charAt(0).toUpperCase() + tender.issue.priority.slice(1)}
+                          <Badge
+                            className={
+                              tender.issue.priority === "urgent"
+                                ? "bg-red-100 text-red-700"
+                                : tender.issue.priority === "high"
+                                  ? "bg-orange-100 text-orange-700"
+                                  : tender.issue.priority === "medium"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-slate-100 text-slate-600"
+                            }
+                          >
+                            {tender.issue.priority.charAt(0).toUpperCase() +
+                              tender.issue.priority.slice(1)}
                           </Badge>
                         </div>
                       )}
@@ -604,7 +651,7 @@ export default function TenderDetailPage() {
                     <CardTitle className="text-lg">
                       {isLandlord
                         ? `Quotes Received (${visibleQuotes.length})`
-                        : `Your Quote${visibleQuotes.length > 0 ? '' : 's'}`}
+                        : `Your Quote${visibleQuotes.length > 0 ? "" : "s"}`}
                     </CardTitle>
                     <CardDescription>
                       {isLandlord
@@ -623,14 +670,14 @@ export default function TenderDetailPage() {
                       </p>
                     )}
                     {visibleQuotes.map((quote) => (
-                      <div 
+                      <div
                         key={quote.id}
                         className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50"
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div>
                             <h4 className="font-medium text-slate-800 dark:text-white">
-                              {isLandlord ? quote.contractor_name : 'Your Quote'}
+                              {isLandlord ? quote.contractor_name : "Your Quote"}
                             </h4>
                             {isLandlord && (
                               <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -639,16 +686,12 @@ export default function TenderDetailPage() {
                               </div>
                             )}
                           </div>
-                          <span className="text-xl font-bold text-green-600">
-                            £{quote.amount}
-                          </span>
+                          <span className="text-xl font-bold text-green-600">£{quote.amount}</span>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
                           &quot;{quote.message}&quot;
                         </p>
-                        <p className="text-xs text-slate-400">
-                          Available: {quote.available_from}
-                        </p>
+                        <p className="text-xs text-slate-400">Available: {quote.available_from}</p>
                       </div>
                     ))}
                   </CardContent>
@@ -679,13 +722,17 @@ export default function TenderDetailPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Deadline</span>
                     <span className="font-medium text-slate-800 dark:text-white">
-                      {tender.deadline ? new Date(tender.deadline).toLocaleDateString("en-GB") : 'None'}
+                      {tender.deadline
+                        ? new Date(tender.deadline).toLocaleDateString("en-GB")
+                        : "None"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Time Left</span>
-                    <span className={`font-medium ${daysUntil <= 2 ? "text-red-600" : "text-slate-800 dark:text-white"}`}>
-                      {tender.deadline ? (daysUntil > 0 ? `${daysUntil} days` : "Expired") : 'N/A'}
+                    <span
+                      className={`font-medium ${daysUntil <= 2 ? "text-red-600" : "text-slate-800 dark:text-white"}`}
+                    >
+                      {tender.deadline ? (daysUntil > 0 ? `${daysUntil} days` : "Expired") : "N/A"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -736,11 +783,7 @@ export default function TenderDetailPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <Button 
-                  className="w-full gap-2" 
-                  size="lg"
-                  onClick={() => setShowQuoteDialog(true)}
-                >
+                <Button className="w-full gap-2" size="lg" onClick={() => setShowQuoteDialog(true)}>
                   <Send className="w-4 h-4" />
                   Submit Your Quote
                 </Button>
