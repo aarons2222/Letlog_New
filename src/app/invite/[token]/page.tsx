@@ -10,22 +10,22 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Home, CheckCircle2, AlertCircle, ArrowRight, Key, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
-// Mock invitation data - would come from Supabase
-const mockInvitation = {
-  id: "inv1",
-  tenancyId: "t1",
-  email: "newtenant@example.com",
-  invitedBy: "John Smith",
-  landlordCompany: "Property Management Ltd",
-  property: {
-    address: "42 Oak Street, London, E1 4AB",
-    type: "flat",
-    bedrooms: 2,
-  },
-  status: "pending",
-  expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-};
+interface Invitation {
+  id: string;
+  token: string;
+  tenancy_id: string;
+  email: string;
+  name: string | null;
+  invited_by: string;
+  status: string;
+  expires_at: string;
+  landlord_name: string | null;
+  property_address: string;
+  property_type: string;
+  bedrooms: number;
+}
 
 export default function InvitePage() {
   const params = useParams();
@@ -33,7 +33,7 @@ export default function InvitePage() {
   const token = params.token as string;
   
   const [loading, setLoading] = useState(true);
-  const [invitation, setInvitation] = useState<typeof mockInvitation | null>(null);
+  const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   const [fullName, setFullName] = useState("");
@@ -42,22 +42,95 @@ export default function InvitePage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    // Simulate fetching invitation
     const fetchInvitation = async () => {
       setLoading(true);
-      
-      // In reality, fetch from Supabase
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Check if token is valid
-      if (token === "invalid" || token === "expired") {
-        setError(token === "expired" ? "This invitation has expired." : "Invalid invitation link.");
-        setInvitation(null);
-      } else {
-        setInvitation(mockInvitation);
-        setError(null);
+      const supabase = createClient();
+
+      try {
+        // Fetch invitation by token with related data
+        const { data: invite, error: inviteError } = await supabase
+          .from("tenant_invitations")
+          .select(`
+            id,
+            token,
+            tenancy_id,
+            email,
+            name,
+            invited_by,
+            status,
+            expires_at
+          `)
+          .eq("token", token)
+          .single();
+
+        if (inviteError || !invite) {
+          setError("Invalid invitation link. Please contact your landlord for a new invitation.");
+          setLoading(false);
+          return;
+        }
+
+        // Check if expired
+        if (new Date(invite.expires_at) < new Date()) {
+          setError("This invitation has expired. Please contact your landlord for a new invitation.");
+          setLoading(false);
+          return;
+        }
+
+        // Check if already accepted
+        if (invite.status !== "pending") {
+          setError("This invitation has already been used.");
+          setLoading(false);
+          return;
+        }
+
+        // Fetch landlord name
+        const { data: landlordProfile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", invite.invited_by)
+          .single();
+
+        // Fetch tenancy with property info
+        const { data: tenancy } = await supabase
+          .from("tenancies")
+          .select(`
+            id,
+            properties (
+              address_line_1,
+              address_line_2,
+              city,
+              postcode,
+              property_type,
+              bedrooms
+            )
+          `)
+          .eq("id", invite.tenancy_id)
+          .single();
+
+        const prop = (tenancy as any)?.properties;
+        const address = prop
+          ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+              .filter(Boolean)
+              .join(", ")
+          : "Property details unavailable";
+
+        setInvitation({
+          ...invite,
+          landlord_name: landlordProfile?.full_name || "Your landlord",
+          property_address: address,
+          property_type: prop?.property_type || "property",
+          bedrooms: prop?.bedrooms || 0,
+        });
+
+        // Pre-fill name if provided in invitation
+        if (invite.name) {
+          setFullName(invite.name);
+        }
+      } catch (err) {
+        console.error("Error fetching invitation:", err);
+        setError("Something went wrong. Please try again later.");
       }
-      
+
       setLoading(false);
     };
     
@@ -67,6 +140,8 @@ export default function InvitePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!invitation) return;
+
     if (!fullName.trim()) {
       toast.error("Please enter your name");
       return;
@@ -83,18 +158,124 @@ export default function InvitePage() {
     }
     
     setSubmitting(true);
-    
-    // Simulate account creation
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast.success("Account created!", {
-      description: "Welcome to LetLog. Redirecting to your dashboard...",
-    });
-    
-    // Redirect to dashboard
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 1500);
+    const supabase = createClient();
+
+    try {
+      // 1. Create user account
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: invitation.email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            full_name: fullName,
+            role: "tenant",
+          },
+        },
+      });
+
+      if (signUpError) {
+        // If user already exists, try to sign them in instead
+        if (signUpError.message?.includes("already registered") || 
+            signUpError.message?.includes("already exists")) {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: invitation.email,
+            password,
+          });
+
+          if (signInError) {
+            toast.error("An account with this email already exists. Please sign in with your existing password.");
+            setSubmitting(false);
+            return;
+          }
+
+          // Use the signed-in user
+          if (signInData.user) {
+            await completeInvitation(supabase, signInData.user.id, fullName, invitation);
+            return;
+          }
+        }
+        throw signUpError;
+      }
+
+      if (signUpData.user) {
+        // 2. Create profile
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .insert({
+            id: signUpData.user.id,
+            email: invitation.email,
+            full_name: fullName,
+            role: "tenant",
+          });
+
+        if (profileError) {
+          console.error("Profile creation error:", profileError);
+          // Profile might already exist if user was pre-created by invite
+          // Try updating instead
+          await supabase
+            .from("profiles")
+            .update({
+              full_name: fullName,
+              role: "tenant",
+            })
+            .eq("id", signUpData.user.id);
+        }
+
+        await completeInvitation(supabase, signUpData.user.id, fullName, invitation);
+      }
+    } catch (err: any) {
+      console.error("Error creating account:", err);
+      toast.error(err.message || "Failed to create account. Please try again.");
+      setSubmitting(false);
+    }
+  };
+
+  const completeInvitation = async (
+    supabase: ReturnType<typeof createClient>,
+    userId: string,
+    name: string,
+    invite: Invitation
+  ) => {
+    try {
+      // 3. Update invitation status to accepted
+      const { error: updateError } = await supabase
+        .from("tenant_invitations")
+        .update({ status: "accepted" })
+        .eq("token", invite.token);
+
+      if (updateError) {
+        console.error("Error updating invitation:", updateError);
+      }
+
+      // 4. Add tenant to tenancy
+      const { error: tenantError } = await supabase
+        .from("tenancy_tenants")
+        .insert({
+          tenancy_id: invite.tenancy_id,
+          tenant_id: userId,
+          is_lead: false,
+        });
+
+      if (tenantError) {
+        console.error("Error adding tenant to tenancy:", tenantError);
+        // Don't fail - the invitation is accepted, tenant link can be fixed
+      }
+
+      toast.success("Account created!", {
+        description: "Welcome to LetLog. Redirecting to your dashboard...",
+      });
+
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 1500);
+    } catch (err) {
+      console.error("Error completing invitation:", err);
+      toast.error("Account created but there was an issue linking your tenancy. Please contact your landlord.");
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 2000);
+    }
   };
 
   if (loading) {
@@ -151,9 +332,9 @@ export default function InvitePage() {
             <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Key className="w-7 h-7 text-emerald-600" />
             </div>
-            <CardTitle className="text-xl">You've Been Invited!</CardTitle>
+            <CardTitle className="text-xl">You&apos;ve Been Invited!</CardTitle>
             <CardDescription className="text-base">
-              {invitation?.invitedBy} has invited you to join as a tenant
+              {invitation?.landlord_name} has invited you to join as a tenant
             </CardDescription>
           </CardHeader>
           
@@ -165,12 +346,9 @@ export default function InvitePage() {
                   <Home className="w-5 h-5 text-slate-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-slate-900">{invitation?.property.address}</p>
+                  <p className="font-medium text-slate-900">{invitation?.property_address}</p>
                   <p className="text-sm text-slate-600">
-                    {invitation?.property.bedrooms} bed {invitation?.property.type}
-                  </p>
-                  <p className="text-sm text-slate-500 mt-1">
-                    Managed by {invitation?.landlordCompany}
+                    {invitation?.bedrooms ? `${invitation.bedrooms} bed ` : ""}{invitation?.property_type}
                   </p>
                 </div>
               </div>

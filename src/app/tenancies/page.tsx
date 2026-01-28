@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,60 +45,31 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RoleGuard } from "@/components/RoleGuard";
+import { createClient } from "@/lib/supabase/client";
+import { useRole } from "@/contexts/RoleContext";
 
-// Mock data - would come from Supabase
-const mockTenancies = [
-  {
-    id: "1",
-    property: {
-      id: "p1",
-      address: "42 Oak Street, London, E1 4AB",
-      type: "flat",
-      bedrooms: 2,
-    },
-    tenants: [
-      { id: "t1", name: "Sarah Johnson", email: "sarah@example.com", isLead: true },
-      { id: "t2", name: "Mike Johnson", email: "mike@example.com", isLead: false },
-    ],
-    startDate: "2023-06-01",
-    endDate: "2024-05-31",
-    rentAmount: 1500,
-    status: "active",
-  },
-  {
-    id: "2",
-    property: {
-      id: "p2",
-      address: "15 Maple Avenue, Manchester, M1 2BB",
-      type: "house",
-      bedrooms: 3,
-    },
-    tenants: [
-      { id: "t3", name: "Emma Wilson", email: "emma@example.com", isLead: true },
-    ],
-    startDate: "2023-09-01",
-    endDate: "2024-08-31",
-    rentAmount: 1200,
-    status: "active",
-  },
-  {
-    id: "3",
-    property: {
-      id: "p3",
-      address: "8 Pine Road, Birmingham, B2 3CC",
-      type: "flat",
-      bedrooms: 1,
-    },
-    tenants: [
-      { id: "t4", name: "James Brown", email: "james@example.com", isLead: true },
-    ],
-    startDate: "2022-03-01",
-    endDate: "2023-02-28",
-    rentAmount: 850,
-    status: "ended",
-    endedAt: "2023-02-28",
-  },
-];
+interface TenancyTenant {
+  id: string;
+  name: string;
+  email: string;
+  isLead: boolean;
+}
+
+interface Tenancy {
+  id: string;
+  property: {
+    id: string;
+    address: string;
+    type: string;
+    bedrooms: number;
+  };
+  tenants: TenancyTenant[];
+  startDate: string;
+  endDate: string | null;
+  rentAmount: number;
+  status: string;
+  endedAt?: string;
+}
 
 const statusColors: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700",
@@ -116,13 +87,15 @@ export default function TenanciesPage() {
 }
 
 function TenanciesContent() {
-  const [tenancies, setTenancies] = useState(mockTenancies);
+  const { userId } = useRole();
+  const [tenancies, setTenancies] = useState<Tenancy[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   
   // End Tenancy Dialog
   const [endTenancyOpen, setEndTenancyOpen] = useState(false);
-  const [selectedTenancy, setSelectedTenancy] = useState<typeof mockTenancies[0] | null>(null);
+  const [selectedTenancy, setSelectedTenancy] = useState<Tenancy | null>(null);
   const [endReason, setEndReason] = useState("");
   const [endNotes, setEndNotes] = useState("");
   
@@ -130,6 +103,85 @@ function TenanciesContent() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
+
+  useEffect(() => {
+    if (!userId) return;
+
+    async function fetchTenancies() {
+      const supabase = createClient();
+      try {
+        // Fetch tenancies with property data
+        const { data: rawTenancies, error } = await supabase
+          .from("tenancies")
+          .select(`
+            *,
+            properties (
+              id, address_line_1, address_line_2, city, postcode, property_type, bedrooms
+            )
+          `)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        // For each tenancy, fetch associated tenants
+        const enriched: Tenancy[] = await Promise.all(
+          (rawTenancies || []).map(async (t: any) => {
+            const prop = t.properties;
+            const address = prop
+              ? [prop.address_line_1, prop.address_line_2, prop.city, prop.postcode]
+                  .filter(Boolean)
+                  .join(", ")
+              : "Unknown property";
+
+            // Fetch tenants for this tenancy
+            const { data: tenancyTenants } = await supabase
+              .from("tenancy_tenants")
+              .select(`
+                id,
+                is_lead,
+                tenant_id,
+                profiles (
+                  id, full_name, email
+                )
+              `)
+              .eq("tenancy_id", t.id);
+
+            const tenants: TenancyTenant[] = (tenancyTenants || []).map((tt: any) => ({
+              id: tt.tenant_id || tt.id,
+              name: tt.profiles?.full_name || "Unknown",
+              email: tt.profiles?.email || "",
+              isLead: tt.is_lead || false,
+            }));
+
+            return {
+              id: t.id,
+              property: {
+                id: prop?.id || "",
+                address,
+                type: prop?.property_type || "flat",
+                bedrooms: prop?.bedrooms || 0,
+              },
+              tenants,
+              startDate: t.start_date || "",
+              endDate: t.end_date || null,
+              rentAmount: t.rent_amount || 0,
+              status: t.status || "draft",
+              endedAt: t.ended_at || undefined,
+            };
+          })
+        );
+
+        setTenancies(enriched);
+      } catch (err) {
+        console.error("Error fetching tenancies:", err);
+        toast.error("Failed to load tenancies");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchTenancies();
+  }, [userId]);
 
   const filteredTenancies = tenancies.filter((t) => {
     const matchesSearch = 
@@ -139,24 +191,42 @@ function TenanciesContent() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleEndTenancy = (tenancy: typeof mockTenancies[0]) => {
+  const handleEndTenancy = (tenancy: Tenancy) => {
     setSelectedTenancy(tenancy);
     setEndTenancyOpen(true);
   };
 
-  const confirmEndTenancy = () => {
+  const confirmEndTenancy = async () => {
     if (!selectedTenancy) return;
     
-    // Update tenancy status
-    setTenancies(prev => prev.map(t => 
-      t.id === selectedTenancy.id 
-        ? { ...t, status: "ended", endedAt: new Date().toISOString() }
-        : t
-    ));
-    
-    toast.success("Tenancy ended", {
-      description: "Former tenants can leave reviews for 60 days.",
-    });
+    const supabase = createClient();
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("tenancies")
+        .update({ 
+          status: "ended", 
+          ended_at: now,
+          end_reason: endReason,
+          end_notes: endNotes,
+        })
+        .eq("id", selectedTenancy.id);
+
+      if (error) throw error;
+
+      setTenancies(prev => prev.map(t => 
+        t.id === selectedTenancy.id 
+          ? { ...t, status: "ended", endedAt: now }
+          : t
+      ));
+      
+      toast.success("Tenancy ended", {
+        description: "Former tenants can leave reviews for 60 days.",
+      });
+    } catch (err) {
+      console.error("Error ending tenancy:", err);
+      toast.error("Failed to end tenancy");
+    }
     
     setEndTenancyOpen(false);
     setSelectedTenancy(null);
@@ -164,27 +234,69 @@ function TenanciesContent() {
     setEndNotes("");
   };
 
-  const handleInviteTenant = (tenancy: typeof mockTenancies[0]) => {
+  const handleInviteTenant = (tenancy: Tenancy) => {
     setSelectedTenancy(tenancy);
     setInviteOpen(true);
   };
 
-  const sendInvitation = () => {
-    if (!inviteEmail) {
+  const [inviteSending, setInviteSending] = useState(false);
+
+  const sendInvitation = async () => {
+    if (!inviteEmail || !selectedTenancy) {
       toast.error("Please enter an email address");
       return;
     }
     
-    // Would send invitation via Supabase
-    toast.success("Invitation sent", {
-      description: `Invitation sent to ${inviteEmail}`,
-    });
+    setInviteSending(true);
+    try {
+      const res = await fetch("/api/invitations/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: inviteEmail,
+          name: inviteName,
+          tenancyId: selectedTenancy.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send invitation");
+      }
+
+      toast.success("Invitation sent", {
+        description: `Invitation email sent to ${inviteEmail}`,
+      });
+    } catch (err: any) {
+      console.error("Error sending invitation:", err);
+      toast.error(err.message || "Failed to send invitation");
+    } finally {
+      setInviteSending(false);
+    }
     
     setInviteOpen(false);
     setInviteEmail("");
     setInviteName("");
     setSelectedTenancy(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+          <div className="container mx-auto px-6 py-4">
+            <div className="h-8 w-48 bg-slate-200 rounded animate-pulse" />
+          </div>
+        </header>
+        <main className="container mx-auto px-6 py-8 space-y-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-48 bg-white rounded-2xl animate-pulse" />
+          ))}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -246,7 +358,7 @@ function TenanciesContent() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge className={statusColors[tenancy.status]}>
+                    <Badge className={statusColors[tenancy.status] || statusColors.draft}>
                       {tenancy.status.charAt(0).toUpperCase() + tenancy.status.slice(1)}
                     </Badge>
                     <DropdownMenu>
@@ -288,14 +400,16 @@ function TenanciesContent() {
                       Tenants
                     </div>
                     <div className="space-y-1">
-                      {tenancy.tenants.map((tenant) => (
+                      {tenancy.tenants.length > 0 ? tenancy.tenants.map((tenant) => (
                         <div key={tenant.id} className="text-sm text-slate-700">
                           {tenant.name}
                           {tenant.isLead && (
                             <span className="text-xs text-slate-400 ml-1">(Lead)</span>
                           )}
                         </div>
-                      ))}
+                      )) : (
+                        <div className="text-sm text-slate-400">No tenants assigned</div>
+                      )}
                     </div>
                   </div>
 
@@ -306,9 +420,9 @@ function TenanciesContent() {
                       Term
                     </div>
                     <div className="text-sm text-slate-700">
-                      {new Date(tenancy.startDate).toLocaleDateString('en-GB', { 
+                      {tenancy.startDate ? new Date(tenancy.startDate).toLocaleDateString('en-GB', { 
                         day: 'numeric', month: 'short', year: 'numeric' 
-                      })}
+                      }) : "—"}
                       {" → "}
                       {tenancy.endDate ? new Date(tenancy.endDate).toLocaleDateString('en-GB', { 
                         day: 'numeric', month: 'short', year: 'numeric' 
@@ -333,14 +447,14 @@ function TenanciesContent() {
                 </div>
 
                 {/* Review Window Notice for Ended Tenancies */}
-                {tenancy.status === "ended" && (
+                {tenancy.status === "ended" && tenancy.endedAt && (
                   <div className="mt-4 p-3 bg-amber-50 rounded-xl flex items-start gap-3">
                     <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div className="text-sm">
                       <span className="font-medium text-amber-800">Review window active</span>
                       <p className="text-amber-700 mt-0.5">
                         Former tenants can leave a review until{" "}
-                        {new Date(new Date(tenancy.endedAt!).getTime() + 60 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', {
+                        {new Date(new Date(tenancy.endedAt).getTime() + 60 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', {
                           day: 'numeric', month: 'short', year: 'numeric'
                         })}
                       </p>
@@ -393,7 +507,7 @@ function TenanciesContent() {
               <div className="p-4 bg-slate-50 rounded-xl">
                 <div className="font-medium text-slate-900">{selectedTenancy.property.address}</div>
                 <div className="text-sm text-slate-600 mt-1">
-                  {selectedTenancy.tenants.map(t => t.name).join(", ")}
+                  {selectedTenancy.tenants.map(t => t.name).join(", ") || "No tenants"}
                 </div>
               </div>
 
@@ -457,7 +571,7 @@ function TenanciesContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="inviteName">Tenant's Name</Label>
+                <Label htmlFor="inviteName">Tenant&apos;s Name</Label>
                 <Input
                   id="inviteName"
                   placeholder="John Smith"
@@ -489,9 +603,9 @@ function TenanciesContent() {
             <Button variant="outline" onClick={() => setInviteOpen(false)} className="rounded-xl">
               Cancel
             </Button>
-            <Button onClick={sendInvitation} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={sendInvitation} disabled={inviteSending} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
               <Mail className="w-4 h-4 mr-2" />
-              Send Invitation
+              {inviteSending ? "Sending..." : "Send Invitation"}
             </Button>
           </DialogFooter>
         </DialogContent>
