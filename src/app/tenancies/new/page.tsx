@@ -92,18 +92,23 @@ export default function NewTenancyPage() {
         return;
       }
 
-      const { error } = await supabase.from("tenancies").insert({
-        property_id: formData.property_id,
-        start_date: formData.start_date,
-        end_date: formData.end_date || null,
-        rent_amount: parseFloat(formData.rent_amount),
-        rent_frequency: formData.rent_frequency,
-        deposit_amount: formData.deposit_amount ? parseFloat(formData.deposit_amount) : null,
-        notes: formData.notes || null,
-        status: "active",
+      const res = await fetch("/api/tenancies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          property_id: formData.property_id,
+          start_date: formData.start_date,
+          end_date: formData.end_date || null,
+          rent_amount: formData.rent_amount,
+          rent_frequency: formData.rent_frequency,
+          deposit_amount: formData.deposit_amount || null,
+          notes: formData.notes || null,
+          status: "active",
+        }),
       });
 
-      if (error) throw error;
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to create tenancy");
 
       toast.success("Tenancy created successfully!");
       router.push("/tenancies");

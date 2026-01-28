@@ -1,0 +1,50 @@
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+
+export async function POST(request: Request) {
+  try {
+    const supabase = await createClient()
+    
+    // Verify authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    
+    // Validate required fields
+    if (!body.property_id || !body.start_date || !body.rent_amount) {
+      return NextResponse.json({ error: 'Missing required fields: property_id, start_date, rent_amount' }, { status: 400 })
+    }
+
+    // Use service role for insert to bypass RLS
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+    const serviceClient = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data, error } = await serviceClient.from('tenancies').insert({
+      property_id: body.property_id,
+      start_date: body.start_date,
+      end_date: body.end_date || null,
+      rent_amount: parseFloat(body.rent_amount),
+      rent_frequency: body.rent_frequency || 'monthly',
+      deposit_amount: body.deposit_amount ? parseFloat(body.deposit_amount) : null,
+      notes: body.notes || null,
+      status: body.status || 'active',
+      created_by: user.id,
+    }).select().single()
+
+    if (error) {
+      console.error('Tenancy insert error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ data })
+  } catch (err: any) {
+    console.error('API error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}

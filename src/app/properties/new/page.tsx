@@ -57,7 +57,7 @@ function NewPropertyContent() {
     bedrooms: "",
     bathrooms: "",
     description: "",
-    rent_amount: "",
+    // rent moved to tenancy creation
     epc_rating: "",
   });
 
@@ -287,22 +287,6 @@ function NewPropertyContent() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="rent_amount">Monthly Rent (£)</Label>
-                    <div className="relative">
-                      <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        id="rent_amount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="850"
-                        value={formData.rent_amount}
-                        onChange={(e) => handleChange("rent_amount", e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="epc_rating">EPC Rating</Label>
                     <Select value={formData.epc_rating} onValueChange={(v) => handleChange("epc_rating", v)}>
