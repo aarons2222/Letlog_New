@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleProvider } from "@/contexts/RoleContext";
+import AppShellWrapper from "@/components/AppShellWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +22,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <RoleProvider>
-          {children}
+          <AppShellWrapper>
+            {children}
+          </AppShellWrapper>
         </RoleProvider>
         <Toaster />
       </body>

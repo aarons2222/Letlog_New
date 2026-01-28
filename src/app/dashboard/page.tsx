@@ -9,8 +9,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 import { type Role, routePermissions, roleConfig } from "@/lib/roles";
-import { 
-  Home, Key, Wrench, AlertTriangle, FileText, 
+import {
+  Home, Key, Wrench, AlertTriangle, FileText,
   MessageSquare, Briefcase, Star, Plus, ClipboardList,
   LogOut, Building2, User, Calendar, Settings, Users, Receipt
 } from "lucide-react";
@@ -112,10 +112,10 @@ export default function DashboardPage() {
 
     async function loadDashboard() {
       const supabase = createClient();
-      
+
       try {
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        
+
         if (authError || !authUser) {
           setIsLoading(false);
           return;
@@ -128,21 +128,11 @@ export default function DashboardPage() {
           .eq('id', authUser.id)
           .single();
 
-        const userRole = (profile?.role as Role) || 'landlord';
-
-        if (profile) {
-          setUser({
-            id: profile.id,
-            email: profile.email || authUser.email || '',
-            full_name: profile.full_name || 'User',
-            role: userRole,
-          });
-          setRole(userRole);
-        }
+        const userRole = (profile?.role as Role) || role || 'landlord';
 
         // Fetch stats based on role
         await loadStats(supabase, authUser.id, userRole);
-        
+
         // Fetch recent activity
         await loadActivity(supabase, authUser.id);
 
@@ -203,20 +193,17 @@ export default function DashboardPage() {
           complianceAlerts: complianceCount || 0,
         }));
       } else if (userRole === 'tenant') {
-        // #2: Tenant stats — NO rent references. Only show maintenance issues.
+        // #2: Tenant stats - NO rent references. Only show maintenance issues.
         const { count: issueCount } = await supabase
           .from('issues')
           .select('*', { count: 'exact', head: true })
           .eq('reported_by', userId)
           .in('status', ['open', 'in_progress']);
 
-        setStats({
-          properties: 0,
-          tenancies: 0,
-          openIssues: issueCount || 0,
-          pendingQuotes: 0,
-          complianceAlerts: 0,
-        });
+        setStats((prev) => ({
+          ...prev,
+          myIssues: issueCount || 0,
+        }));
       }
     } catch (err) {
       console.error("Stats load error:", err);
@@ -274,7 +261,7 @@ export default function DashboardPage() {
       const sixtyDaysFromNow = new Date();
       sixtyDaysFromNow.setDate(now.getDate() + 60);
 
-      // Scheduled contractor visits — issues with a scheduled_date in the future
+      // Scheduled contractor visits - issues with a scheduled_date in the future
       const { data: scheduledIssues } = await supabase
         .from('issues')
         .select('id, title, scheduled_date, status')
@@ -298,7 +285,7 @@ export default function DashboardPage() {
         });
       });
 
-      // Upcoming inspections — issues with category/type of 'inspection'
+      // Upcoming inspections - issues with category/type of 'inspection'
       const { data: inspections } = await supabase
         .from('issues')
         .select('id, title, scheduled_date, status')
@@ -378,93 +365,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Header */}
-      <motion.header 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50"
-      >
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#E8998D] to-[#F4A261] rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">L</span>
-            </div>
-            <span className="font-bold text-xl">
-              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">Let</span>
-              <span>Log</span>
-            </span>
-          </Link>
-          
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-slate-700">{fullName}</p>
-              <div className="flex items-center justify-end gap-2">
-                <p className="text-xs text-slate-500">{email}</p>
-                {role && (
-                  <Badge className={roleConfig[role].badgeColor + " text-xs"}>
-                    {roleConfig[role].label}
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <Link href="/settings">
-              <motion.div 
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center cursor-pointer"
-                whileHover={{ scale: 1.1 }}
-              >
-                <User className="w-5 h-5 text-slate-600" />
-              </motion.div>
-            </Link>
-          </div>
-        </div>
-      </motion.header>
-
-      <div className="flex">
-        {/* Sidebar Navigation - Role-filtered */}
-        <aside className="hidden md:flex flex-col w-64 min-h-[calc(100vh-73px)] bg-white border-r border-slate-200 p-4">
-          <nav className="space-y-1">
-            <NavLink href="/dashboard" icon={Home} label="Dashboard" active />
-            
-            {/* Landlord nav */}
-            {role === "landlord" && (
-              <>
-                <NavLink href="/properties" icon={Building2} label="Properties" />
-                <NavLink href="/tenancies" icon={Users} label="Tenancies" />
-                <NavLink href="/issues" icon={Wrench} label="Maintenance" />
-                <NavLink href="/tenders" icon={Briefcase} label="Jobs" />
-                <NavLink href="/compliance" icon={AlertTriangle} label="Compliance" />
-                <NavLink href="/calendar" icon={Calendar} label="Calendar" />
-                <NavLink href="/reviews" icon={Star} label="Reviews" />
-              </>
-            )}
-
-            {/* Tenant nav */}
-            {role === "tenant" && (
-              <>
-                <NavLink href="/issues" icon={Wrench} label="Maintenance" />
-                <NavLink href="/reviews" icon={Star} label="Reviews" />
-              </>
-            )}
-
-            {/* Contractor nav */}
-            {role === "contractor" && (
-              <>
-                <NavLink href="/tenders" icon={Briefcase} label="Browse Jobs" />
-                <NavLink href="/quotes" icon={Receipt} label="My Quotes" />
-                <NavLink href="/reviews" icon={Star} label="Reviews" />
-              </>
-            )}
-            
-            <div className="pt-4 border-t border-slate-200 mt-4">
-              <NavLink href="/settings" icon={Settings} label="Settings" />
-            </div>
-          </nav>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-6">
+    <>
           <AnimatePresence mode="wait">
             {isLoading || roleLoading ? (
               <LoadingSkeleton key="loading" />
@@ -478,7 +379,7 @@ export default function DashboardPage() {
                 {/* Welcome Section */}
                 <motion.div variants={fadeInUp} className="mb-8">
                   <div className="flex items-center gap-3 mb-2">
-                    <motion.span 
+                    <motion.span
                       className="text-3xl"
                       animate={{ rotate: [0, 14, -8, 14, 0] }}
                       transition={{ duration: 1.5, delay: 0.5 }}
@@ -498,9 +399,9 @@ export default function DashboardPage() {
                   </p>
                 </motion.div>
 
-                {/* Stats Grid — role-aware */}
+                {/* Stats Grid - role-aware */}
                 {role === 'landlord' && (
-                  <motion.div 
+                  <motion.div
                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
                     variants={containerVariants}
                   >
@@ -511,10 +412,10 @@ export default function DashboardPage() {
                   </motion.div>
                 )}
 
-                {/* #2: Tenant stats — NO rent status / rent history / "pays rent" references.
+                {/* #2: Tenant stats - NO rent status / rent history / "pays rent" references.
                      Only show maintenance-related stats until payments feature ships. */}
                 {role === 'tenant' && (
-                  <motion.div 
+                  <motion.div
                     className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8"
                     variants={containerVariants}
                   >
@@ -523,13 +424,13 @@ export default function DashboardPage() {
                 )}
 
                 {role === 'contractor' && (
-                  <motion.div 
+                  <motion.div
                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8"
                     variants={containerVariants}
                   >
                     <StatCard title="Pending Quotes" value={stats.pendingQuotes.toString()} icon={FileText} color="orange" />
-                    <StatCard title="Active Jobs" value="—" icon={Briefcase} color="blue" />
-                    <StatCard title="Reviews" value="—" icon={Star} color="green" />
+                    <StatCard title="Active Jobs" value="-" icon={Briefcase} color="blue" />
+                    <StatCard title="Reviews" value="-" icon={Star} color="green" />
                   </motion.div>
                 )}
 
@@ -556,11 +457,11 @@ export default function DashboardPage() {
                         ) : (
                           <div className="space-y-3">
                             {upcomingEvents.map((event) => (
-                              <div 
-                                key={event.id} 
+                              <div
+                                key={event.id}
                                 className={`flex items-start gap-3 p-3 rounded-xl border ${
-                                  event.urgency === 'urgent' 
-                                    ? 'border-red-200 bg-red-50' 
+                                  event.urgency === 'urgent'
+                                    ? 'border-red-200 bg-red-50'
                                     : event.urgency === 'warning'
                                       ? 'border-amber-200 bg-amber-50'
                                       : 'border-slate-200 bg-slate-50'
@@ -571,13 +472,13 @@ export default function DashboardPage() {
                                   <p className="text-sm font-medium text-slate-700">{event.title}</p>
                                   <div className="flex items-center gap-2 mt-1">
                                     <span className="text-xs text-slate-500">
-                                      {new Date(event.date).toLocaleDateString('en-GB', { 
-                                        weekday: 'short', day: 'numeric', month: 'short' 
+                                      {new Date(event.date).toLocaleDateString('en-GB', {
+                                        weekday: 'short', day: 'numeric', month: 'short'
                                       })}
                                     </span>
                                     <Badge className={
-                                      event.urgency === 'urgent' 
-                                        ? 'bg-red-100 text-red-700 text-xs' 
+                                      event.urgency === 'urgent'
+                                        ? 'bg-red-100 text-red-700 text-xs'
                                         : event.urgency === 'warning'
                                           ? 'bg-amber-100 text-amber-700 text-xs'
                                           : 'bg-slate-100 text-slate-600 text-xs'
@@ -663,22 +564,7 @@ export default function DashboardPage() {
               </motion.div>
             )}
           </AnimatePresence>
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function NavLink({ href, icon: Icon, label, active }: { href: string; icon: React.ElementType; label: string; active?: boolean }) {
-  return (
-    <Link href={href}>
-      <div className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-        active ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-      }`}>
-        <Icon className="w-5 h-5" />
-        <span className="font-medium">{label}</span>
-      </div>
-    </Link>
+    </>
   );
 }
 

@@ -396,7 +396,7 @@ export default function IssueDetailPage() {
 
                 <div className="space-y-4">
                   <AnimatePresence>
-                    {timeline.map((item, index) => (
+                    {issue.timeline.map((item, index) => (
                       <motion.div
                         key={item.id}
                         initial={{ opacity: 0, x: -20 }}
@@ -412,7 +412,7 @@ export default function IssueDetailPage() {
                           }`}>
                             <User className="w-4 h-4" />
                           </div>
-                          {index < timeline.length - 1 && (
+                          {index < issue.timeline.length - 1 && (
                             <div className="w-0.5 flex-1 bg-slate-200 my-2" />
                           )}
                         </div>

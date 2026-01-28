@@ -102,6 +102,7 @@ export default function TenanciesPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
+  const [inviteSending, setInviteSending] = useState(false);
 
   useEffect(() => {
     async function fetchTenancies() {
