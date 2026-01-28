@@ -72,8 +72,9 @@ export default function AppShell({ children, activeNav }: { children: React.Reac
       <div className="flex">
         {/* Collapsible Sidebar */}
         <motion.aside
+          initial={false}
           animate={{ width: sidebarOpen ? 240 : 64 }}
-          transition={{ duration: 0.2, ease: "easeInOut" }}
+          transition={{ duration: 0.15, ease: "easeInOut" }}
           className="hidden md:flex flex-col min-h-[calc(100vh-73px)] bg-white border-r border-slate-200 overflow-hidden flex-shrink-0"
         >
           <nav className="flex-1 space-y-1 p-2 mt-2">
