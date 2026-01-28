@@ -67,29 +67,16 @@ export default function PropertiesPage() {
     async function fetchProperties() {
       const supabase = createClient();
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setIsLoading(false);
-          return;
-        }
-
-        // Fetch properties with related tenancies and compliance records
-        const { data: props, error } = await supabase
-          .from('properties')
-          .select(`
-            *,
-            tenancies(id, status, rent_amount, tenancy_tenants(id, tenant_id)),
-            compliance_records(id, expiry_date)
-          `)
-          .eq('landlord_id', user.id)
-          .eq('is_active', true);
-
-        if (error) {
-          console.error('Error fetching properties:', error);
+        // Fetch properties via server API (bypasses RLS)
+        const res = await fetch('/api/properties');
+        if (!res.ok) {
+          const err = await res.json();
+          console.error('Error fetching properties:', err);
           toast.error('Failed to load properties');
           setIsLoading(false);
           return;
         }
+        const { data: props } = await res.json();
 
         const now = new Date();
         const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
