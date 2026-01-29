@@ -216,14 +216,13 @@ export default function TenanciesPage() {
         });
         
         const inviteData = await inviteRes.json();
-        console.log('Invitation response:', inviteRes.status, inviteData);
         if (!inviteRes.ok) {
-          console.error('Invitation error:', inviteData.error);
-          // Still continue - tenancy was created, just invitation failed
-          alert('Tenancy created but invitation failed: ' + (inviteData.error || 'Unknown error'));
+          alert('Invitation failed: ' + (inviteData.error || 'Unknown error'));
+        } else {
+          alert('Invitation created successfully!');
         }
       } else {
-        console.log('Skipping invitation - no email or no tenancy ID');
+        alert('No email provided or tenancy ID missing - skipping invitation');
       }
 
       // Reset form and close modal
