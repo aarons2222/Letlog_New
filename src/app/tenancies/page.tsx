@@ -159,12 +159,6 @@ export default function TenanciesPage() {
           <h1 className="text-2xl font-bold text-slate-800">Tenancies</h1>
           <p className="text-sm text-slate-500">Manage your tenancy agreements</p>
         </div>
-        <Link href="/tenancies/new">
-          <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]">
-            <Plus className="w-4 h-4" />
-            New Tenancy
-          </Button>
-        </Link>
       </div>
           {tenancies.length === 0 ? (
             <motion.div
@@ -176,11 +170,11 @@ export default function TenanciesPage() {
                 <Users className="w-10 h-10 text-slate-400" />
               </div>
               <h2 className="text-xl font-semibold text-slate-800 mb-2">No tenancies yet</h2>
-              <p className="text-slate-500 mb-6">Create a tenancy to start managing your rentals</p>
-              <Link href="/tenancies/new">
+              <p className="text-slate-500 mb-6">Invite tenants to your properties to create tenancies</p>
+              <Link href="/properties">
                 <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]">
-                  <Plus className="w-4 h-4" />
-                  Create First Tenancy
+                  <Building2 className="w-4 h-4" />
+                  View Properties
                 </Button>
               </Link>
             </motion.div>
@@ -252,9 +246,15 @@ export default function TenanciesPage() {
 
                         {/* Right side */}
                         <div className="flex items-center gap-3">
-                          <Badge className={getStatusColor(tenancy.status)}>
-                            {tenancy.status}
-                          </Badge>
+                          {tenancy.pending_invite && !tenancy.tenant_profile ? (
+                            <Badge className="bg-yellow-100 text-yellow-700">
+                              Pending Invite
+                            </Badge>
+                          ) : (
+                            <Badge className={getStatusColor(tenancy.status)}>
+                              {tenancy.status}
+                            </Badge>
+                          )}
 
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

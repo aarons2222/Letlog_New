@@ -425,9 +425,9 @@ export default function DashboardPage() {
                                   <Plus className="w-4 h-4" /> Add Property
                                 </Button>
                               </Link>
-                              <Link href="/tenancies/new">
+                              <Link href="/tenancies">
                                 <Button variant="outline" className="w-full justify-start gap-2">
-                                  <Users className="w-4 h-4" /> New Tenancy
+                                  <Users className="w-4 h-4" /> Tenancies
                                 </Button>
                               </Link>
                               <Link href="/compliance">
