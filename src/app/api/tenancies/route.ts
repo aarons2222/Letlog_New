@@ -38,7 +38,6 @@ export async function POST(request: Request) {
         deposit_amount: body.deposit_amount ? parseFloat(body.deposit_amount) : null,
         notes: body.notes || null,
         status: body.status || "active",
-        created_by: user.id,
       })
       .select()
       .single();
