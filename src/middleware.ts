@@ -44,8 +44,22 @@ export async function middleware(request: NextRequest) {
   });
 
   // IMPORTANT: This refreshes the session if expired and sets new cookies
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user;
+  let user = null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    user = session?.user ?? null;
+  } catch (error) {
+    // Session read failed - clear auth cookies to prevent loops
+    console.error('Session read error, clearing cookies:', error);
+    const response = NextResponse.next({ request });
+    // Clear all Supabase auth cookies
+    request.cookies.getAll().forEach((cookie) => {
+      if (cookie.name.startsWith('sb-')) {
+        response.cookies.delete(cookie.name);
+      }
+    });
+    return response;
+  }
 
   // Protected routes - redirect to login if not authenticated
   const isProtectedPath = protectedPaths.some(
@@ -55,7 +69,10 @@ export async function middleware(request: NextRequest) {
   if (isProtectedPath && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
-    return NextResponse.redirect(redirectUrl);
+    // Don't redirect if already going to login (prevent loop)
+    if (request.nextUrl.pathname !== "/login") {
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   // Redirect logged in users away from auth pages and landing page
@@ -66,7 +83,10 @@ export async function middleware(request: NextRequest) {
   if ((isAuthPath || isLandingPage) && user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/dashboard";
-    return NextResponse.redirect(redirectUrl);
+    // Don't redirect if already on dashboard (prevent loop)
+    if (request.nextUrl.pathname !== "/dashboard") {
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   return supabaseResponse;
