@@ -200,11 +200,7 @@ export default function TenanciesPage() {
       }
 
       // If email provided, send invitation
-      console.log('Tenancy created:', tenancyData);
-      console.log('Form email:', formData.email, 'Tenancy ID:', tenancyData.data?.id);
-      
       if (formData.email && tenancyData.data?.id) {
-        console.log('Sending invitation...');
         const inviteRes = await fetch('/api/invitations/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -217,12 +213,8 @@ export default function TenanciesPage() {
         
         const inviteData = await inviteRes.json();
         if (!inviteRes.ok) {
-          alert('Invitation failed: ' + (inviteData.error || 'Unknown error'));
-        } else {
-          alert('Invitation result: ' + JSON.stringify(inviteData.insertedData));
+          console.error('Invitation failed:', inviteData.error);
         }
-      } else {
-        alert('No email provided or tenancy ID missing - skipping invitation');
       }
 
       // Reset form and close modal
@@ -317,14 +309,13 @@ export default function TenanciesPage() {
             tenant_profile = profile;
           }
 
-          // Check for pending invite (any status since RLS is off)
-          const { data: invite, error: invErr } = await supabase
+          // Check for pending invite
+          const { data: invite } = await supabase
             .from('tenant_invitations')
             .select('email, name, status')
             .eq('tenancy_id', t.id)
+            .eq('status', 'pending')
             .maybeSingle();
-          
-          console.log('Tenancy', t.id, 'invite query result:', invite, invErr);
           pending_invite = invite;
 
           return {
