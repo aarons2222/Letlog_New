@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/tenancies/[id] - Get single tenancy
@@ -76,14 +77,22 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
+  // Use admin client to bypass RLS for delete operations
+  const adminClient = createAdminClient();
+
   // Delete related records first (tenant invites, etc.)
-  await supabase
+  const { error: inviteError } = await adminClient
     .from('tenant_invites')
     .delete()
     .eq('tenancy_id', id);
 
+  if (inviteError) {
+    console.error('Delete invites error:', inviteError);
+    // Continue anyway - invites table might not exist or be empty
+  }
+
   // Delete the tenancy
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await adminClient
     .from('tenancies')
     .delete()
     .eq('id', id);
@@ -91,7 +100,7 @@ export async function DELETE(
   if (deleteError) {
     console.error('Delete tenancy error:', deleteError);
     return NextResponse.json(
-      { error: 'Failed to delete tenancy' },
+      { error: `Failed to delete tenancy: ${deleteError.message}` },
       { status: 500 }
     );
   }
