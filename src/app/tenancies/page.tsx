@@ -277,19 +277,59 @@ export default function TenanciesPage() {
       setHasProperties(true);
       setProperties(propsData);
       setFirstPropertyId(propsData[0].id);
+      const propIds = propsData.map(p => p.id);
 
-      // Fetch tenancies with invitations via API (bypasses RLS issues)
-      const res = await fetch('/api/tenancies/list', { credentials: 'include' });
-      const { data: enriched, error } = await res.json();
+      // Get tenancies with property info
+      const { data: tenanciesData } = await supabase
+        .from('tenancies')
+        .select(`
+          *,
+          properties (address_line_1, city, postcode, bedrooms, property_type)
+        `)
+        .in('property_id', propIds)
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Failed to load tenancies:', error);
+      if (!tenanciesData) {
         setTenancies([]);
         setIsLoading(false);
         return;
       }
 
-      setTenancies(enriched || []);
+      // Enrich with tenant info and pending invites
+      const enriched = await Promise.all(
+        tenanciesData.map(async (t) => {
+          let tenant_profile = null;
+          let pending_invite = null;
+
+          // Get tenant profile if tenant_id exists
+          if (t.tenant_id) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name, email')
+              .eq('id', t.tenant_id)
+              .maybeSingle();
+            tenant_profile = profile;
+          }
+
+          // Check for pending invite (any status since RLS is off)
+          const { data: invite, error: invErr } = await supabase
+            .from('tenant_invitations')
+            .select('email, name, status')
+            .eq('tenancy_id', t.id)
+            .maybeSingle();
+          
+          console.log('Tenancy', t.id, 'invite query result:', invite, invErr);
+          pending_invite = invite;
+
+          return {
+            ...t,
+            tenant_profile,
+            pending_invite,
+          };
+        })
+      );
+
+      setTenancies(enriched);
       setIsLoading(false);
     }
 
