@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-// RoleNavigation removed - using Sidebar instead
-import { Sidebar } from "@/components/Sidebar";
+// Sidebar handled by AppShell
 import { DashboardEmptyState } from "@/components/EmptyState";
 import { 
   Home, Key, Wrench, AlertTriangle, FileText, 
@@ -409,12 +408,8 @@ export default function DashboardPage() {
         </div>
       </motion.header>
 
-      <div className="flex">
-        {/* Sidebar Navigation - Collapsible */}
-        <Sidebar role={role} />
-
-        {/* Main Content */}
-        <main className="flex-1 p-6">
+      {/* Main Content */}
+      <main className="p-6">
           <AnimatePresence mode="wait">
             {isLoading ? (
               <LoadingSkeleton key="loading" />
@@ -551,8 +546,7 @@ export default function DashboardPage() {
               </motion.div>
             )}
           </AnimatePresence>
-        </main>
-      </div>
+      </main>
     </div>
   );
 }

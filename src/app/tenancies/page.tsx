@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase/client';
-import { Sidebar } from '@/components/Sidebar';
+// Sidebar handled by AppShell
 import { 
   ArrowLeft, Plus, Home, Users, Calendar, UserPlus, 
   MoreVertical, Loader2, Mail, Building2
@@ -176,10 +176,7 @@ export default function TenanciesPage() {
         </div>
       </header>
 
-      <div className="flex">
-        <Sidebar role="landlord" />
-
-        <main className="flex-1 p-6">
+      <main className="p-6">
           {tenancies.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -300,8 +297,7 @@ export default function TenanciesPage() {
               ))}
             </div>
           )}
-        </main>
-      </div>
+      </main>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Sidebar } from "@/components/Sidebar";
+// Sidebar handled by AppShell
 import { 
   ArrowLeft, Plus, Search, Home, MapPin, Bed, Bath, 
   Users, AlertTriangle, MoreVertical, Edit, Trash2, Eye,
@@ -194,10 +194,7 @@ export default function PropertiesPage() {
         </div>
       </header>
 
-      <div className="flex">
-        <Sidebar role="landlord" />
-        
-        <main className="flex-1 p-6">
+      <main className="p-6">
           {/* Stats */}
           <motion.div 
             className="grid grid-cols-3 gap-4 mb-6"
@@ -288,8 +285,7 @@ export default function PropertiesPage() {
               </Button>
             </div>
           )}
-        </main>
-      </div>
+      </main>
     </div>
   );
 }
