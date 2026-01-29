@@ -487,26 +487,58 @@ export default function DashboardPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-2 gap-3">
-                          <Link href="/properties/new">
-                            <Button variant="outline" className="w-full justify-start gap-2">
-                              <Plus className="w-4 h-4" /> Add Property
-                            </Button>
-                          </Link>
-                          <Link href="/tenancies/new">
-                            <Button variant="outline" className="w-full justify-start gap-2">
-                              <Users className="w-4 h-4" /> New Tenancy
-                            </Button>
-                          </Link>
-                          <Link href="/compliance">
-                            <Button variant="outline" className="w-full justify-start gap-2">
-                              <AlertTriangle className="w-4 h-4" /> Compliance
-                            </Button>
-                          </Link>
-                          <Link href="/issues">
-                            <Button variant="outline" className="w-full justify-start gap-2">
-                              <Wrench className="w-4 h-4" /> Issues
-                            </Button>
-                          </Link>
+                          {role === 'landlord' && (
+                            <>
+                              <Link href="/properties/new">
+                                <Button variant="outline" className="w-full justify-start gap-2">
+                                  <Plus className="w-4 h-4" /> Add Property
+                                </Button>
+                              </Link>
+                              <Link href="/tenancies/new">
+                                <Button variant="outline" className="w-full justify-start gap-2">
+                                  <Users className="w-4 h-4" /> New Tenancy
+                                </Button>
+                              </Link>
+                              <Link href="/compliance">
+                                <Button variant="outline" className="w-full justify-start gap-2">
+                                  <AlertTriangle className="w-4 h-4" /> Compliance
+                                </Button>
+                              </Link>
+                              <Link href="/tenders">
+                                <Button variant="outline" className="w-full justify-start gap-2">
+                                  <Briefcase className="w-4 h-4" /> Post Job
+                                </Button>
+                              </Link>
+                            </>
+                          )}
+                          {role === 'tenant' && (
+                            <>
+                              <Link href="/issues/new">
+                                <Button variant="outline" className="w-full justify-start gap-2">
+                                  <Wrench className="w-4 h-4" /> Report Issue
+                                </Button>
+                              </Link>
+                              <Link href="/reviews/new">
+                                <Button variant="outline" className="w-full justify-start gap-2">
+                                  <Star className="w-4 h-4" /> Leave Review
+                                </Button>
+                              </Link>
+                            </>
+                          )}
+                          {role === 'contractor' && (
+                            <>
+                              <Link href="/tenders">
+                                <Button variant="outline" className="w-full justify-start gap-2">
+                                  <Briefcase className="w-4 h-4" /> Browse Jobs
+                                </Button>
+                              </Link>
+                              <Link href="/quotes">
+                                <Button variant="outline" className="w-full justify-start gap-2">
+                                  <Receipt className="w-4 h-4" /> My Quotes
+                                </Button>
+                              </Link>
+                            </>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
