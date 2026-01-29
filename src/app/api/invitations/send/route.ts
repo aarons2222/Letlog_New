@@ -124,6 +124,7 @@ export async function POST(req: NextRequest) {
       message: `Invitation created for ${email}`,
       inviteUrl,
       token,
+      insertedData, // Return what was actually inserted
     });
   } catch (error: any) {
     console.error("Invitation error:", error);

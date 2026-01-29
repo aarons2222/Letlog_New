@@ -219,7 +219,7 @@ export default function TenanciesPage() {
         if (!inviteRes.ok) {
           alert('Invitation failed: ' + (inviteData.error || 'Unknown error'));
         } else {
-          alert('Invitation created successfully!');
+          alert('Invitation result: ' + JSON.stringify(inviteData.insertedData));
         }
       } else {
         alert('No email provided or tenancy ID missing - skipping invitation');
