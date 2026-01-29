@@ -170,31 +170,20 @@ export default function PropertiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold text-slate-800">Properties</h1>
-              <p className="text-sm text-slate-500">Manage your property portfolio</p>
-            </div>
-          </div>
-          <Link href="/properties/new">
-            <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261] hover:from-[#d88a7e] hover:to-[#e39555]">
-              <Plus className="w-4 h-4" />
-              Add Property
-            </Button>
-          </Link>
+    <div className="p-6">
+      {/* Page Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Properties</h1>
+          <p className="text-sm text-slate-500">Manage your property portfolio</p>
         </div>
-      </header>
-
-      <main className="p-6">
+        <Link href="/properties/new">
+          <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261] hover:from-[#d88a7e] hover:to-[#e39555]">
+            <Plus className="w-4 h-4" />
+            Add Property
+          </Button>
+        </Link>
+      </div>
           {/* Stats */}
           <motion.div 
             className="grid grid-cols-3 gap-4 mb-6"
@@ -285,7 +274,6 @@ export default function PropertiesPage() {
               </Button>
             </div>
           )}
-      </main>
     </div>
   );
 }

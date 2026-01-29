@@ -340,76 +340,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Header */}
-      <motion.header 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50"
-      >
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#E8998D] to-[#F4A261] rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">L</span>
-            </div>
-            <span className="font-bold text-xl">
-              <span className="bg-gradient-to-r from-[#E8998D] to-[#F4A261] bg-clip-text text-transparent">Let</span>
-              <span>Log</span>
-            </span>
-          </Link>
-          
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-slate-700">{user?.full_name}</p>
-              <p className="text-xs text-slate-500">{user?.email}</p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <motion.div 
-                  className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center cursor-pointer"
-                  whileHover={{ scale: 1.1 }}
-                >
-                  <User className="w-5 h-5 text-slate-600" />
-                </motion.div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="px-2 py-2 border-b border-slate-100">
-                  <p className="text-sm font-medium text-slate-800">{user?.full_name}</p>
-                  <p className="text-xs text-slate-500">{user?.email}</p>
-                </div>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" className="cursor-pointer">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/notifications" className="cursor-pointer">
-                    <Bell className="w-4 h-4 mr-2" />
-                    Notifications
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-red-600 cursor-pointer"
-                  onClick={async () => {
-                    const supabase = createClient();
-                    await supabase.auth.signOut();
-                    window.location.href = '/login';
-                  }}
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </motion.header>
-
-      {/* Main Content */}
-      <main className="p-6">
+    <div className="p-6">
           <AnimatePresence mode="wait">
             {isLoading ? (
               <LoadingSkeleton key="loading" />
@@ -578,7 +509,6 @@ export default function DashboardPage() {
               </motion.div>
             )}
           </AnimatePresence>
-      </main>
     </div>
   );
 }
