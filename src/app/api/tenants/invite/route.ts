@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy init to avoid build-time errors
+const getResend = () => new Resend(process.env.RESEND_API_KEY || 'dummy_key');
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://letlog.uk'}/invite/${invite.token}`;
     
     try {
-      await resend.emails.send({
+      await getResend().emails.send({
         from: 'LetLog <noreply@letlog.uk>',
         to: email,
         subject: `You've been invited to join a tenancy on LetLog`,

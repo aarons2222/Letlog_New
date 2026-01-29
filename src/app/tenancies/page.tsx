@@ -60,6 +60,8 @@ export default function TenanciesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [endingTenancyId, setEndingTenancyId] = useState<string | null>(null);
   const [isEnding, setIsEnding] = useState(false);
+  const [deletingTenancyId, setDeletingTenancyId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleEndTenancy = async () => {
     if (!endingTenancyId) return;
@@ -88,6 +90,30 @@ export default function TenanciesPage() {
     } finally {
       setIsEnding(false);
       setEndingTenancyId(null);
+    }
+  };
+
+  const handleDeleteTenancy = async () => {
+    if (!deletingTenancyId) return;
+    
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/tenancies/${deletingTenancyId}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        // Remove from local state
+        setTenancies(prev => prev.filter(t => t.id !== deletingTenancyId));
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete tenancy');
+      }
+    } catch (err) {
+      alert('Failed to delete tenancy');
+    } finally {
+      setIsDeleting(false);
+      setDeletingTenancyId(null);
     }
   };
 
@@ -319,12 +345,18 @@ export default function TenanciesPage() {
                               <DropdownMenuItem>Edit Tenancy</DropdownMenuItem>
                               {tenancy.status !== 'ended' && (
                                 <DropdownMenuItem 
-                                  className="text-red-600"
+                                  className="text-orange-600"
                                   onClick={() => setEndingTenancyId(tenancy.id)}
                                 >
                                   End Tenancy
                                 </DropdownMenuItem>
                               )}
+                              <DropdownMenuItem 
+                                className="text-red-600"
+                                onClick={() => setDeletingTenancyId(tenancy.id)}
+                              >
+                                Delete Tenancy
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -341,11 +373,11 @@ export default function TenanciesPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <AlertTriangle className="w-5 h-5 text-orange-500" />
               End Tenancy
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to end this tenancy? This will mark the tenancy as ended with today&apos;s date. This action cannot be undone.
+              Are you sure you want to end this tenancy? This will mark the tenancy as ended with today&apos;s date. The tenancy record will be preserved for your records.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -353,7 +385,7 @@ export default function TenanciesPage() {
             <AlertDialogAction
               onClick={handleEndTenancy}
               disabled={isEnding}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-orange-600 hover:bg-orange-700"
             >
               {isEnding ? (
                 <>
@@ -362,6 +394,38 @@ export default function TenanciesPage() {
                 </>
               ) : (
                 'End Tenancy'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Tenancy Confirmation Dialog */}
+      <AlertDialog open={!!deletingTenancyId} onOpenChange={(open) => !open && setDeletingTenancyId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              Delete Tenancy
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this tenancy? This will remove all tenancy records, pending invites, and associated data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTenancy}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Forever'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
