@@ -183,7 +183,7 @@ export default function TenanciesPage() {
           end_date: endDate.toISOString().split('T')[0],
           rent_amount: formData.rentAmount,
           rent_frequency: 'monthly',
-          status: 'pending',
+          status: 'draft',
         }),
       });
 
@@ -329,7 +329,7 @@ export default function TenanciesPage() {
       case 'active':
       case 'current':
         return 'bg-green-100 text-green-700';
-      case 'pending':
+      case 'draft':
         return 'bg-yellow-100 text-yellow-700';
       case 'ended':
         return 'bg-slate-100 text-slate-700';
