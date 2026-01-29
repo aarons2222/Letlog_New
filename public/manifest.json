@@ -1,0 +1,16 @@
+{
+  "name": "LetLog - Property Management",
+  "short_name": "LetLog",
+  "description": "Modern property management for landlords, tenants, and contractors",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#E8998D",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

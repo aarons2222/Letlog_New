@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
               "font-src 'self' fonts.gstatic.com",
               "img-src 'self' data: blob: *.supabase.co *.vercel.app",
-              "connect-src 'self' *.supabase.co api.stripe.com *.vercel.app wss://*.supabase.co",
+              "connect-src 'self' https://www.letlog.uk https://letlog.uk *.supabase.co api.stripe.com *.vercel.app wss://*.supabase.co",
               "frame-src js.stripe.com *.stripe.com",
               "object-src 'none'",
               "base-uri 'self'",
