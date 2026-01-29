@@ -2,16 +2,33 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/client';
-// Sidebar handled by AppShell
 import { 
   ArrowLeft, Plus, Home, Users, Calendar, UserPlus, 
   MoreVertical, Loader2, Mail, Building2, AlertTriangle
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +45,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+interface Property {
+  id: string;
+  address_line_1: string;
+  city: string;
+  postcode: string;
+}
 
 interface Tenancy {
   id: string;
@@ -56,7 +80,9 @@ interface Tenancy {
 }
 
 export default function TenanciesPage() {
+  const router = useRouter();
   const [tenancies, setTenancies] = useState<Tenancy[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasProperties, setHasProperties] = useState(false);
   const [firstPropertyId, setFirstPropertyId] = useState<string | null>(null);
@@ -64,6 +90,18 @@ export default function TenanciesPage() {
   const [isEnding, setIsEnding] = useState(false);
   const [deletingTenancyId, setDeletingTenancyId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Add Tenant Modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    propertyId: '',
+    rentAmount: '',
+    startDate: new Date().toISOString().split('T')[0],
+    tenancyLength: '12',
+  });
 
   const handleEndTenancy = async () => {
     if (!endingTenancyId) return;
@@ -119,6 +157,87 @@ export default function TenanciesPage() {
     }
   };
 
+  const handleAddTenant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.propertyId || !formData.rentAmount || !formData.startDate) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsAdding(true);
+
+    try {
+      // Calculate end date
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + parseInt(formData.tenancyLength));
+
+      // Create tenancy via API
+      const tenancyRes = await fetch('/api/tenancies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          property_id: formData.propertyId,
+          start_date: formData.startDate,
+          end_date: endDate.toISOString().split('T')[0],
+          rent_amount: formData.rentAmount,
+          rent_frequency: 'monthly',
+          status: 'pending',
+        }),
+      });
+
+      const tenancyData = await tenancyRes.json();
+
+      if (!tenancyRes.ok) {
+        alert('Failed to create tenancy: ' + (tenancyData.error || 'Unknown error'));
+        setIsAdding(false);
+        return;
+      }
+
+      // If email provided, send invitation
+      if (formData.email && tenancyData.data?.id) {
+        await fetch('/api/invitations/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            name: formData.name,
+            tenancyId: tenancyData.data.id,
+          }),
+        });
+      }
+
+      // Reset form and close modal
+      setFormData({
+        name: '',
+        email: '',
+        propertyId: properties.length === 1 ? properties[0].id : '',
+        rentAmount: '',
+        startDate: new Date().toISOString().split('T')[0],
+        tenancyLength: '12',
+      });
+      setShowAddModal(false);
+      
+      // Refresh the page to show new tenancy
+      router.refresh();
+      window.location.reload();
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Something went wrong');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const openAddModal = () => {
+    // Auto-select first property if only one
+    if (properties.length === 1) {
+      setFormData(prev => ({ ...prev, propertyId: properties[0].id }));
+    }
+    setShowAddModal(true);
+  };
+
   useEffect(() => {
     async function loadTenancies() {
       const supabase = createClient();
@@ -130,21 +249,24 @@ export default function TenanciesPage() {
       }
 
       // Get user's properties
-      const { data: properties } = await supabase
+      const { data: propsData } = await supabase
         .from('properties')
-        .select('id')
-        .eq('landlord_id', user.id);
+        .select('id, address_line_1, city, postcode')
+        .eq('landlord_id', user.id)
+        .order('address_line_1');
 
-      if (!properties || properties.length === 0) {
+      if (!propsData || propsData.length === 0) {
         setHasProperties(false);
+        setProperties([]);
         setTenancies([]);
         setIsLoading(false);
         return;
       }
 
       setHasProperties(true);
-      setFirstPropertyId(properties[0].id);
-      const propIds = properties.map(p => p.id);
+      setProperties(propsData);
+      setFirstPropertyId(propsData[0].id);
+      const propIds = propsData.map(p => p.id);
 
       // Get tenancies with property info
       const { data: tenanciesData } = await supabase
@@ -232,6 +354,15 @@ export default function TenanciesPage() {
           <h1 className="text-2xl font-bold text-slate-800">Tenants</h1>
           <p className="text-sm text-slate-500">Manage your tenants</p>
         </div>
+        {hasProperties && (
+          <Button 
+            onClick={openAddModal}
+            className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add Tenant
+          </Button>
+        )}
       </div>
           {tenancies.length === 0 ? (
             <motion.div
@@ -246,12 +377,13 @@ export default function TenanciesPage() {
                 <>
                   <h2 className="text-xl font-semibold text-slate-800 mb-2">No tenants yet</h2>
                   <p className="text-slate-500 mb-6">Add your first tenant to get started</p>
-                  <Link href="/tenancies/new">
-                    <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]">
-                      <UserPlus className="w-4 h-4" />
-                      Add Tenant
-                    </Button>
-                  </Link>
+                  <Button 
+                    onClick={openAddModal}
+                    className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Add Tenant
+                  </Button>
                 </>
               ) : (
                 <>
@@ -498,6 +630,140 @@ export default function TenanciesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Tenant Modal */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-[#E8998D]" />
+              Add Tenant
+            </DialogTitle>
+            <DialogDescription>
+              Add a new tenant to one of your properties
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddTenant} className="space-y-4 mt-4">
+            {/* Tenant Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Tenant Name *</Label>
+              <Input
+                id="name"
+                placeholder="John Smith"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                required
+              />
+            </div>
+
+            {/* Email for invitation */}
+            <div className="space-y-2">
+              <Label htmlFor="email">Tenant Email (for invitation)</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="john@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+              />
+              <p className="text-xs text-slate-500">We&apos;ll send them an invite to access their tenancy</p>
+            </div>
+
+            {/* Property */}
+            <div className="space-y-2">
+              <Label htmlFor="property">Property *</Label>
+              <Select
+                value={formData.propertyId}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, propertyId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a property" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.address_line_1}, {property.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Rent Amount */}
+            <div className="space-y-2">
+              <Label htmlFor="rent">Monthly Rent (£) *</Label>
+              <Input
+                id="rent"
+                type="number"
+                placeholder="1200"
+                value={formData.rentAmount}
+                onChange={(e) => setFormData(prev => ({ ...prev, rentAmount: e.target.value }))}
+                required
+              />
+            </div>
+
+            {/* Start Date */}
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Tenancy Start Date *</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={formData.startDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                required
+              />
+            </div>
+
+            {/* Tenancy Length */}
+            <div className="space-y-2">
+              <Label htmlFor="length">Tenancy Length *</Label>
+              <Select
+                value={formData.tenancyLength}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, tenancyLength: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="6">6 months</SelectItem>
+                  <SelectItem value="12">12 months</SelectItem>
+                  <SelectItem value="18">18 months</SelectItem>
+                  <SelectItem value="24">24 months</SelectItem>
+                  <SelectItem value="36">36 months</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowAddModal(false)}
+                disabled={isAdding}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isAdding}
+                className="flex-1 bg-gradient-to-r from-[#E8998D] to-[#F4A261]"
+              >
+                {isAdding ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  'Add Tenant'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
