@@ -76,6 +76,7 @@ interface Tenancy {
   } | null;
   pending_invite?: {
     email: string;
+    name?: string;
   } | null;
 }
 
@@ -174,6 +175,7 @@ export default function TenanciesPage() {
       endDate.setMonth(endDate.getMonth() + parseInt(formData.tenancyLength));
 
       // Create tenancy via API
+      // Use 'pending' status if inviting a tenant, 'draft' otherwise
       const tenancyRes = await fetch('/api/tenancies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -183,7 +185,9 @@ export default function TenanciesPage() {
           end_date: endDate.toISOString().split('T')[0],
           rent_amount: formData.rentAmount,
           rent_frequency: 'monthly',
-          status: 'draft',
+          status: formData.email ? 'pending' : 'draft',
+          tenant_name: formData.name,
+          tenant_email: formData.email,
         }),
       });
 
@@ -302,8 +306,8 @@ export default function TenanciesPage() {
 
           // Check for pending invite
           const { data: invite } = await supabase
-            .from('tenant_invites')
-            .select('email')
+            .from('tenant_invitations')
+            .select('email, name')
             .eq('tenancy_id', t.id)
             .eq('status', 'pending')
             .maybeSingle();
@@ -330,6 +334,7 @@ export default function TenanciesPage() {
       case 'current':
         return 'bg-green-100 text-green-700';
       case 'draft':
+      case 'pending':
         return 'bg-yellow-100 text-yellow-700';
       case 'ended':
         return 'bg-slate-100 text-slate-700';
@@ -483,7 +488,10 @@ export default function TenanciesPage() {
                               ) : tenancy.pending_invite ? (
                                 <div className="flex items-center gap-2 text-xs sm:text-sm">
                                   <Mail className="w-4 h-4 text-yellow-600 flex-shrink-0" />
-                                  <span className="text-slate-500 truncate">{tenancy.pending_invite.email}</span>
+                                  <span className="text-slate-500 truncate">
+                                    {tenancy.pending_invite.name || tenancy.pending_invite.email}
+                                    {tenancy.pending_invite.name && <span className="text-slate-400 ml-1">({tenancy.pending_invite.email})</span>}
+                                  </span>
                                 </div>
                               ) : (
                                 <Link href={`/tenancies/${tenancy.id}/invite`}>
