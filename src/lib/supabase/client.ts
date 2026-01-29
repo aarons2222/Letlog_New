@@ -5,16 +5,11 @@ let client: ReturnType<typeof createBrowserClient> | null = null;
 export function createClient() {
   if (client) return client;
   
+  // Use default storage - @supabase/ssr handles both localStorage AND cookies
+  // Custom storage override was breaking cookie sync, causing auth loops
   client = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: true,
-        storageKey: 'letlog-auth',
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      },
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
   
   return client;
