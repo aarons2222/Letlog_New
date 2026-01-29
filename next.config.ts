@@ -17,16 +17,16 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.vercel.app *.supabase.co js.stripe.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.vercel.app *.vercel.live *.supabase.co js.stripe.com",
               "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
-              "font-src 'self' fonts.gstatic.com",
-              "img-src 'self' data: blob: *.supabase.co *.vercel.app",
-              "connect-src 'self' https://www.letlog.uk https://letlog.uk *.supabase.co api.stripe.com *.vercel.app wss://*.supabase.co",
-              "frame-src js.stripe.com *.stripe.com",
+              "font-src 'self' fonts.gstatic.com data:",
+              "img-src 'self' data: blob: *.supabase.co *.vercel.app *.vercel.live",
+              "connect-src 'self' https://www.letlog.uk https://letlog.uk *.supabase.co api.stripe.com *.vercel.app *.vercel.live wss://*.supabase.co wss://*.vercel.live",
+              "frame-src 'self' js.stripe.com *.stripe.com *.vercel.live",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
-              "frame-ancestors 'none'",
+              "frame-ancestors 'self'",
               "upgrade-insecure-requests"
             ].join('; ')
           },
