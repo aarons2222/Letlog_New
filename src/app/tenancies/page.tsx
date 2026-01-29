@@ -255,41 +255,88 @@ export default function TenanciesPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  <Card className="border-0 shadow-lg bg-white/70 backdrop-blur hover:shadow-xl transition-all">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex gap-4">
+                  <Card className="border-0 shadow-lg bg-white/70 backdrop-blur hover:shadow-xl transition-all overflow-hidden">
+                    <CardContent className="p-4 sm:p-6">
+                      {/* Mobile: Badge + Menu at top */}
+                      <div className="flex items-center justify-between mb-3 sm:hidden">
+                        {tenancy.pending_invite && !tenancy.tenant_profile ? (
+                          <Badge className="bg-yellow-100 text-yellow-700 text-xs">
+                            Pending Invite
+                          </Badge>
+                        ) : (
+                          <Badge className={getStatusColor(tenancy.status) + " text-xs"}>
+                            {tenancy.status}
+                          </Badge>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/tenancies/${tenancy.id}`}>View Details</Link>
+                            </DropdownMenuItem>
+                            {!tenancy.tenant_profile && !tenancy.pending_invite && (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/tenancies/${tenancy.id}/invite`}>
+                                  <UserPlus className="w-4 h-4 mr-2" />
+                                  Invite Tenant
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem>Edit Tenancy</DropdownMenuItem>
+                            {tenancy.status !== 'ended' && (
+                              <DropdownMenuItem 
+                                className="text-orange-600"
+                                onClick={() => setEndingTenancyId(tenancy.id)}
+                              >
+                                End Tenancy
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onClick={() => setDeletingTenancyId(tenancy.id)}
+                            >
+                              Delete Tenancy
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div className="flex gap-3 sm:gap-4">
                           {/* Property Icon */}
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                            <Home className="w-6 h-6 text-slate-600" />
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center flex-shrink-0">
+                            <Home className="w-5 h-5 sm:w-6 sm:h-6 text-slate-600" />
                           </div>
 
                           {/* Info */}
-                          <div>
-                            <h3 className="font-semibold text-slate-800">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-semibold text-slate-800 text-sm sm:text-base truncate">
                               {tenancy.properties?.address_line_1}
                             </h3>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-xs sm:text-sm text-slate-500">
                               {tenancy.properties?.city}, {tenancy.properties?.postcode}
                             </p>
 
                             {/* Tenant Info */}
-                            <div className="mt-3 flex items-center gap-4">
+                            <div className="mt-2 sm:mt-3">
                               {tenancy.tenant_profile ? (
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Users className="w-4 h-4 text-green-600" />
-                                  <span className="text-slate-700">{tenancy.tenant_profile.full_name}</span>
-                                  <span className="text-slate-400">({tenancy.tenant_profile.email})</span>
+                                <div className="flex items-center gap-2 text-xs sm:text-sm">
+                                  <Users className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                  <span className="text-slate-700 truncate">{tenancy.tenant_profile.full_name}</span>
                                 </div>
                               ) : tenancy.pending_invite ? (
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Mail className="w-4 h-4 text-yellow-600" />
-                                  <span className="text-slate-500">Invite pending: {tenancy.pending_invite.email}</span>
+                                <div className="flex items-center gap-2 text-xs sm:text-sm">
+                                  <Mail className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                                  <span className="text-slate-500 truncate">{tenancy.pending_invite.email}</span>
                                 </div>
                               ) : (
                                 <Link href={`/tenancies/${tenancy.id}/invite`}>
-                                  <Button variant="outline" size="sm" className="gap-2 text-[#E8998D] border-[#E8998D] hover:bg-[#E8998D]/10">
-                                    <UserPlus className="w-4 h-4" />
+                                  <Button variant="outline" size="sm" className="gap-2 text-[#E8998D] border-[#E8998D] hover:bg-[#E8998D]/10 text-xs h-8">
+                                    <UserPlus className="w-3 h-3" />
                                     Invite Tenant
                                   </Button>
                                 </Link>
@@ -297,14 +344,14 @@ export default function TenanciesPage() {
                             </div>
 
                             {/* Dates & Rent */}
-                            <div className="mt-3 flex items-center gap-4 text-sm text-slate-500">
+                            <div className="mt-2 sm:mt-3 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-500">
                               <div className="flex items-center gap-1">
-                                <Calendar className="w-4 h-4" />
+                                <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                                 {new Date(tenancy.start_date).toLocaleDateString('en-GB')}
                                 {tenancy.end_date && ` - ${new Date(tenancy.end_date).toLocaleDateString('en-GB')}`}
                               </div>
                               {tenancy.rent_amount && (
-                                <div>
+                                <div className="font-medium">
                                   £{tenancy.rent_amount.toLocaleString()}/{tenancy.rent_frequency || 'month'}
                                 </div>
                               )}
@@ -312,8 +359,8 @@ export default function TenanciesPage() {
                           </div>
                         </div>
 
-                        {/* Right side */}
-                        <div className="flex items-center gap-3">
+                        {/* Right side - Desktop only */}
+                        <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
                           {tenancy.pending_invite && !tenancy.tenant_profile ? (
                             <Badge className="bg-yellow-100 text-yellow-700">
                               Pending Invite
