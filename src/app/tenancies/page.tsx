@@ -476,27 +476,41 @@ export default function TenanciesPage() {
 
                           {/* Info */}
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-semibold text-slate-800 text-sm sm:text-base truncate">
-                              {tenancy.properties?.address_line_1}
-                            </h3>
-                            <p className="text-xs sm:text-sm text-slate-500">
+                            {/* Tenant Name - Bold at top */}
+                            {tenancy.tenant_profile?.full_name ? (
+                              <h3 className="font-bold text-slate-800 text-base sm:text-lg truncate mb-1">
+                                {tenancy.tenant_profile.full_name}
+                              </h3>
+                            ) : tenancy.pending_invite?.name ? (
+                              <h3 className="font-bold text-slate-800 text-base sm:text-lg truncate mb-1">
+                                {tenancy.pending_invite.name}
+                              </h3>
+                            ) : (
+                              <h3 className="font-bold text-slate-400 text-base sm:text-lg truncate mb-1 italic">
+                                No tenant assigned
+                              </h3>
+                            )}
+
+                            {/* Property Address */}
+                            <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                              <Home className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="truncate">{tenancy.properties?.address_line_1}</span>
+                            </div>
+                            <p className="text-xs sm:text-sm text-slate-500 ml-5">
                               {tenancy.properties?.city}, {tenancy.properties?.postcode}
                             </p>
 
-                            {/* Tenant Info */}
+                            {/* Tenant Email */}
                             <div className="mt-2 sm:mt-3">
                               {tenancy.tenant_profile ? (
                                 <div className="flex items-center gap-2 text-xs sm:text-sm">
-                                  <Users className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                  <span className="text-slate-700 truncate">{tenancy.tenant_profile.full_name}</span>
+                                  <Mail className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                  <span className="text-slate-500 truncate">{tenancy.tenant_profile.email}</span>
                                 </div>
                               ) : tenancy.pending_invite ? (
                                 <div className="flex items-center gap-2 text-xs sm:text-sm">
                                   <Mail className="w-4 h-4 text-yellow-600 flex-shrink-0" />
-                                  <span className="text-slate-500 truncate">
-                                    {tenancy.pending_invite.name || tenancy.pending_invite.email}
-                                    {tenancy.pending_invite.name && <span className="text-slate-400 ml-1">({tenancy.pending_invite.email})</span>}
-                                  </span>
+                                  <span className="text-slate-500 truncate">{tenancy.pending_invite.email}</span>
                                 </div>
                               ) : (
                                 <Link href={`/tenancies/${tenancy.id}/invite`}>
