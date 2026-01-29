@@ -35,27 +35,17 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchRole() {
-      const supabase = createClient();
+    const supabase = createClient();
 
+    async function fetchRole(userId: string, userEmail: string | undefined) {
       try {
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError || !user) {
-          setIsLoading(false);
-          return;
-        }
-
-        setUserId(user.id);
-        setEmail(user.email || null);
+        setUserId(userId);
+        setEmail(userEmail || null);
 
         const { data: profile } = await supabase
           .from("profiles")
           .select("role, full_name, email")
-          .eq("id", user.id)
+          .eq("id", userId)
           .single();
 
         if (profile) {
@@ -70,7 +60,41 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    fetchRole();
+    function clearAuth() {
+      setRole(null);
+      setUserId(null);
+      setFullName(null);
+      setEmail(null);
+      setIsLoading(false);
+    }
+
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchRole(session.user.id, session.user.email);
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          fetchRole(session.user.id, session.user.email);
+        } else if (event === 'SIGNED_OUT') {
+          clearAuth();
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          // Session refreshed, ensure we have the latest
+          setUserId(session.user.id);
+          setEmail(session.user.email || null);
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value: RoleContextValue = {
