@@ -29,15 +29,22 @@ export async function middleware(request: NextRequest) {
           request,
         });
         cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options),
+          supabaseResponse.cookies.set(name, value, {
+            ...options,
+            // Ensure cookies persist across browser sessions
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            httpOnly: true,
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+          }),
         );
       },
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // IMPORTANT: This refreshes the session if expired and sets new cookies
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
 
   // Protected routes - redirect to login if not authenticated
   const isProtectedPath = protectedPaths.some(
