@@ -145,23 +145,26 @@ export default function SettingsPage() {
     setIsDeleting(true);
 
     try {
+      // Use server-side API route to properly delete auth user
+      const res = await fetch("/api/account/delete", {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete account");
+      }
+
+      // Sign out locally
       const supabase = createClient();
-      
-      // Delete user data (cascade should handle related records)
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", user.id);
-
-      if (profileError) throw profileError;
-
-      // Sign out
       await supabase.auth.signOut();
       
       toast.success("Account deleted. We're sorry to see you go.");
       router.push("/");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete account");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to delete account";
+      toast.error(message);
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);

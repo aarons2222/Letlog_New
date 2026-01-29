@@ -1,17 +1,18 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthenticatedUser, hasRole } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const { user, role, error: authError } = await getAuthenticatedUser();
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return NextResponse.json({ error: authError || "Not authenticated" }, { status: 401 });
+    }
+
+    // Only landlords can list their own properties
+    if (!hasRole(role, ["landlord"])) {
+      return NextResponse.json({ error: "Only landlords can access properties" }, { status: 403 });
     }
 
     const adminClient = createAdminClient();
@@ -44,15 +45,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
+    const { user, role, error: authError } = await getAuthenticatedUser();
 
-    // Verify the user is authenticated
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return NextResponse.json({ error: authError || "Not authenticated" }, { status: 401 });
+    }
+
+    // Only landlords can create properties
+    if (!hasRole(role, ["landlord"])) {
+      return NextResponse.json({ error: "Only landlords can create properties" }, { status: 403 });
     }
 
     const body = await request.json();
