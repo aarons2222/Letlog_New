@@ -68,10 +68,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
 
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchRole(session.user.id, session.user.email);
+    // Initial auth check - use getUser() which validates with server
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (user && !error) {
+        fetchRole(user.id, user.email);
       } else {
         setIsLoading(false);
       }

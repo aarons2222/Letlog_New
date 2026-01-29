@@ -94,21 +94,15 @@ export default function DashboardPage() {
       if (!mounted) return;
       
       try {
-        // Get session - wait for it to be ready
-        const { data: { session } } = await supabase.auth.getSession();
+        // Use getUser() which validates with server (more reliable than getSession)
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
         
-        if (!session) {
-          // Not logged in yet, wait for auth state change
-          return;
-        }
-
-        const authUser = session.user;
-        
-        if (!authUser) {
+        if (authError || !authUser) {
+          // Not authenticated - redirect to login
           window.location.href = '/login';
           return;
         }
-
+        
         // Fetch user profile
         const { data: profile } = await supabase
           .from('profiles')
