@@ -59,7 +59,14 @@ export async function GET() {
           tenant_profile = profile;
         }
 
-        // Check for pending invite
+        // Check for pending invite - try without status filter first to debug
+        const { data: allInvites } = await adminClient
+          .from("tenant_invitations")
+          .select("*")
+          .eq("tenancy_id", t.id);
+        
+        console.log("Tenancy", t.id, "invitations found:", allInvites);
+        
         const { data: invite, error: inviteError } = await adminClient
           .from("tenant_invitations")
           .select("email, name")
@@ -70,7 +77,7 @@ export async function GET() {
         if (inviteError) {
           console.error("Invite fetch error for tenancy", t.id, inviteError);
         }
-        pending_invite = invite;
+        pending_invite = invite || (allInvites && allInvites.length > 0 ? allInvites[0] : null);
 
         return {
           ...t,
