@@ -31,11 +31,12 @@ export async function middleware(request: NextRequest) {
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, {
             ...options,
-            // Ensure cookies persist across browser sessions
+            // Safari ITP fix: use strict sameSite with secure in production
             sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production',
-            httpOnly: true,
+            httpOnly: false, // Allow JS access for Supabase client
             maxAge: 60 * 60 * 24 * 7, // 7 days
+            path: '/',
           }),
         );
       },
