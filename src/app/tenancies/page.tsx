@@ -200,7 +200,11 @@ export default function TenanciesPage() {
       }
 
       // If email provided, send invitation
+      console.log('Tenancy created:', tenancyData);
+      console.log('Form email:', formData.email, 'Tenancy ID:', tenancyData.data?.id);
+      
       if (formData.email && tenancyData.data?.id) {
+        console.log('Sending invitation...');
         const inviteRes = await fetch('/api/invitations/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -212,11 +216,14 @@ export default function TenanciesPage() {
         });
         
         const inviteData = await inviteRes.json();
+        console.log('Invitation response:', inviteRes.status, inviteData);
         if (!inviteRes.ok) {
           console.error('Invitation error:', inviteData.error);
           // Still continue - tenancy was created, just invitation failed
           alert('Tenancy created but invitation failed: ' + (inviteData.error || 'Unknown error'));
         }
+      } else {
+        console.log('Skipping invitation - no email or no tenancy ID');
       }
 
       // Reset form and close modal
