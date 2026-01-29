@@ -78,54 +78,48 @@ export default function AddTenantPage() {
     setIsLoading(true);
 
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-
       // Calculate end date based on tenancy length
       const startDate = new Date(formData.startDate);
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + parseInt(formData.tenancyLength));
 
-      // Create the tenancy record
-      const { data: tenancy, error: tenancyError } = await supabase
-        .from('tenancies')
-        .insert({
+      // Create the tenancy via API (has role enforcement)
+      const tenancyRes = await fetch('/api/tenancies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           property_id: formData.propertyId,
           start_date: formData.startDate,
           end_date: endDate.toISOString().split('T')[0],
-          rent_amount: parseFloat(formData.rentAmount),
+          rent_amount: formData.rentAmount,
           rent_frequency: 'monthly',
           status: 'pending',
-        })
-        .select()
-        .single();
+        }),
+      });
 
-      if (tenancyError) {
-        console.error('Tenancy error:', tenancyError);
-        alert('Failed to create tenancy: ' + tenancyError.message);
+      const tenancyData = await tenancyRes.json();
+
+      if (!tenancyRes.ok) {
+        alert('Failed to create tenancy: ' + (tenancyData.error || 'Unknown error'));
         setIsLoading(false);
         return;
       }
 
-      // If email provided, create invite
-      if (formData.email) {
-        const res = await fetch('/api/tenants/invite', {
+      const tenancy = tenancyData.data;
+
+      // If email provided, send invitation
+      if (formData.email && tenancy?.id) {
+        const inviteRes = await fetch('/api/invitations/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: formData.email,
-            tenancy_id: tenancy.id,
-            property_id: formData.propertyId,
-            tenant_name: formData.name,
+            name: formData.name,
+            tenancyId: tenancy.id,
           }),
         });
 
-        if (!res.ok) {
+        if (!inviteRes.ok) {
           console.error('Invite failed but tenancy created');
         }
       }
@@ -195,9 +189,9 @@ export default function AddTenantPage() {
               />
             </div>
 
-            {/* Email (optional) */}
+            {/* Email for invitation */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address (optional)</Label>
+              <Label htmlFor="email">Tenant Email (for invitation)</Label>
               <Input
                 id="email"
                 type="email"
@@ -205,7 +199,7 @@ export default function AddTenantPage() {
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
               />
-              <p className="text-xs text-slate-500">If provided, we&apos;ll send an invite to join the app</p>
+              <p className="text-xs text-slate-500">We&apos;ll send them an invite to access their tenancy in the app</p>
             </div>
 
             {/* Property */}
