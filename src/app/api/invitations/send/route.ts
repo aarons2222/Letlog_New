@@ -105,17 +105,16 @@ export async function POST(req: NextRequest) {
       ) {
         console.log("User already exists in auth, invitation record created");
       } else {
-        console.error("Error sending invite email:", inviteError);
-        // Clean up the invitation record since email failed
-        await adminClient.from("tenant_invitations").delete().eq("token", token);
-
-        return NextResponse.json({ error: "Failed to send invitation email" }, { status: 500 });
+        // Email failed but invitation record exists - still return success
+        // Landlord can share the invite link manually
+        console.error("Email send failed (SMTP not configured?):", inviteError.message);
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Invitation sent to ${email}`,
+      message: `Invitation created for ${email}`,
+      inviteUrl,
       token,
     });
   } catch (error: any) {
