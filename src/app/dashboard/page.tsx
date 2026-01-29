@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { RoleNavigation, RoleQuickActions, RoleBadge } from "@/components/RoleNavigation";
+// RoleNavigation removed - using Sidebar instead
 import { Sidebar } from "@/components/Sidebar";
 import { DashboardEmptyState } from "@/components/EmptyState";
 import { 
@@ -491,7 +491,28 @@ export default function DashboardPage() {
                         <CardDescription>Common tasks for {role}s</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <RoleQuickActions role={role} />
+                        <div className="grid grid-cols-2 gap-3">
+                          <Link href="/properties/new">
+                            <Button variant="outline" className="w-full justify-start gap-2">
+                              <Plus className="w-4 h-4" /> Add Property
+                            </Button>
+                          </Link>
+                          <Link href="/tenancies/new">
+                            <Button variant="outline" className="w-full justify-start gap-2">
+                              <Users className="w-4 h-4" /> New Tenancy
+                            </Button>
+                          </Link>
+                          <Link href="/compliance">
+                            <Button variant="outline" className="w-full justify-start gap-2">
+                              <AlertTriangle className="w-4 h-4" /> Compliance
+                            </Button>
+                          </Link>
+                          <Link href="/issues">
+                            <Button variant="outline" className="w-full justify-start gap-2">
+                              <Wrench className="w-4 h-4" /> Issues
+                            </Button>
+                          </Link>
+                        </div>
                       </CardContent>
                     </Card>
                   </motion.div>
