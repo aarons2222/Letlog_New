@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
 
     // Insert invitation record
-    const { error: insertError } = await adminClient.from("tenant_invitations").insert({
+    const insertData = {
       token,
       email: email.toLowerCase(),
       name: name || null,
@@ -73,11 +73,19 @@ export async function POST(req: NextRequest) {
       invited_by: user.id,
       status: "pending",
       expires_at: expiresAt,
-    });
+    };
+    console.log("Inserting invitation:", insertData);
+    
+    const { data: insertedData, error: insertError } = await adminClient
+      .from("tenant_invitations")
+      .insert(insertData)
+      .select();
+
+    console.log("Insert result:", insertedData, insertError);
 
     if (insertError) {
       console.error("Error inserting invitation:", insertError);
-      return NextResponse.json({ error: "Failed to create invitation" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to create invitation: " + insertError.message }, { status: 500 });
     }
 
     // Use Supabase admin to send the invite email
