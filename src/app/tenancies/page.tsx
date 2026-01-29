@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 // Sidebar handled by AppShell
 import { 
   ArrowLeft, Plus, Home, Users, Calendar, UserPlus, 
-  MoreVertical, Loader2, Mail, Building2
+  MoreVertical, Loader2, Mail, Building2, AlertTriangle
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -18,6 +18,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Tenancy {
   id: string;
@@ -48,6 +58,38 @@ interface Tenancy {
 export default function TenanciesPage() {
   const [tenancies, setTenancies] = useState<Tenancy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [endingTenancyId, setEndingTenancyId] = useState<string | null>(null);
+  const [isEnding, setIsEnding] = useState(false);
+
+  const handleEndTenancy = async () => {
+    if (!endingTenancyId) return;
+    
+    setIsEnding(true);
+    try {
+      const res = await fetch(`/api/tenancies/${endingTenancyId}/end`, {
+        method: 'POST',
+      });
+      
+      if (res.ok) {
+        // Update local state
+        setTenancies(prev => 
+          prev.map(t => 
+            t.id === endingTenancyId 
+              ? { ...t, status: 'ended', end_date: new Date().toISOString().split('T')[0] }
+              : t
+          )
+        );
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to end tenancy');
+      }
+    } catch (err) {
+      alert('Failed to end tenancy');
+    } finally {
+      setIsEnding(false);
+      setEndingTenancyId(null);
+    }
+  };
 
   useEffect(() => {
     async function loadTenancies() {
@@ -275,7 +317,14 @@ export default function TenanciesPage() {
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem>Edit Tenancy</DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600">End Tenancy</DropdownMenuItem>
+                              {tenancy.status !== 'ended' && (
+                                <DropdownMenuItem 
+                                  className="text-red-600"
+                                  onClick={() => setEndingTenancyId(tenancy.id)}
+                                >
+                                  End Tenancy
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -286,6 +335,38 @@ export default function TenanciesPage() {
               ))}
             </div>
           )}
+
+      {/* End Tenancy Confirmation Dialog */}
+      <AlertDialog open={!!endingTenancyId} onOpenChange={(open) => !open && setEndingTenancyId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              End Tenancy
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to end this tenancy? This will mark the tenancy as ended with today&apos;s date. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isEnding}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleEndTenancy}
+              disabled={isEnding}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isEnding ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Ending...
+                </>
+              ) : (
+                'End Tenancy'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
