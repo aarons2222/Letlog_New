@@ -259,7 +259,7 @@ export default function TenanciesPage() {
         return;
       }
 
-      // Get user's properties
+      // Get user's properties for the form dropdown
       const { data: propsData } = await supabase
         .from('properties')
         .select('id, address_line_1, city, postcode')
@@ -277,58 +277,19 @@ export default function TenanciesPage() {
       setHasProperties(true);
       setProperties(propsData);
       setFirstPropertyId(propsData[0].id);
-      const propIds = propsData.map(p => p.id);
 
-      // Get tenancies with property info
-      const { data: tenanciesData } = await supabase
-        .from('tenancies')
-        .select(`
-          *,
-          properties (address_line_1, city, postcode, bedrooms, property_type)
-        `)
-        .in('property_id', propIds)
-        .order('created_at', { ascending: false });
+      // Fetch tenancies with invitations via API (bypasses RLS issues)
+      const res = await fetch('/api/tenancies/list');
+      const { data: enriched, error } = await res.json();
 
-      if (!tenanciesData) {
+      if (error) {
+        console.error('Failed to load tenancies:', error);
         setTenancies([]);
         setIsLoading(false);
         return;
       }
 
-      // Enrich with tenant info and pending invites
-      const enriched = await Promise.all(
-        tenanciesData.map(async (t) => {
-          let tenant_profile = null;
-          let pending_invite = null;
-
-          // Get tenant profile if tenant_id exists
-          if (t.tenant_id) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('full_name, email')
-              .eq('id', t.tenant_id)
-              .maybeSingle();
-            tenant_profile = profile;
-          }
-
-          // Check for pending invite
-          const { data: invite } = await supabase
-            .from('tenant_invitations')
-            .select('email, name')
-            .eq('tenancy_id', t.id)
-            .eq('status', 'pending')
-            .maybeSingle();
-          pending_invite = invite;
-
-          return {
-            ...t,
-            tenant_profile,
-            pending_invite,
-          };
-        })
-      );
-
-      setTenancies(enriched);
+      setTenancies(enriched || []);
       setIsLoading(false);
     }
 
