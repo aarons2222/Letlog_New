@@ -245,18 +245,18 @@ export default function TenanciesPage() {
               {hasProperties ? (
                 <>
                   <h2 className="text-xl font-semibold text-slate-800 mb-2">No tenants yet</h2>
-                  <p className="text-slate-500 mb-6">Invite your first tenant to one of your properties</p>
-                  <Link href={`/properties/${firstPropertyId}`}>
+                  <p className="text-slate-500 mb-6">Add your first tenant to get started</p>
+                  <Link href="/tenancies/new">
                     <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]">
                       <UserPlus className="w-4 h-4" />
-                      Invite Tenant
+                      Add Tenant
                     </Button>
                   </Link>
                 </>
               ) : (
                 <>
                   <h2 className="text-xl font-semibold text-slate-800 mb-2">No tenants yet</h2>
-                  <p className="text-slate-500 mb-6">Add a property first, then invite tenants</p>
+                  <p className="text-slate-500 mb-6">Add a property first, then add tenants</p>
                   <Link href="/properties/new">
                     <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]">
                       <Building2 className="w-4 h-4" />
