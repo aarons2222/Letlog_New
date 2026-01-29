@@ -29,7 +29,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -40,9 +40,16 @@ export default function LoginPage() {
       return;
     }
 
+    // Verify session was set
+    if (!data.session) {
+      toast.error("Login failed - please try again");
+      setLoading(false);
+      return;
+    }
+
     toast.success("Welcome back!");
-    router.push("/dashboard");
-    router.refresh();
+    // Use hard navigation to ensure cookies are read fresh
+    window.location.href = "/dashboard";
   };
 
   const handleMagicLink = async (e: React.FormEvent) => {
