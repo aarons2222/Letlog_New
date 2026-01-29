@@ -58,6 +58,8 @@ interface Tenancy {
 export default function TenanciesPage() {
   const [tenancies, setTenancies] = useState<Tenancy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasProperties, setHasProperties] = useState(false);
+  const [firstPropertyId, setFirstPropertyId] = useState<string | null>(null);
   const [endingTenancyId, setEndingTenancyId] = useState<string | null>(null);
   const [isEnding, setIsEnding] = useState(false);
   const [deletingTenancyId, setDeletingTenancyId] = useState<string | null>(null);
@@ -134,11 +136,14 @@ export default function TenanciesPage() {
         .eq('landlord_id', user.id);
 
       if (!properties || properties.length === 0) {
+        setHasProperties(false);
         setTenancies([]);
         setIsLoading(false);
         return;
       }
 
+      setHasProperties(true);
+      setFirstPropertyId(properties[0].id);
       const propIds = properties.map(p => p.id);
 
       // Get tenancies with property info
@@ -237,14 +242,29 @@ export default function TenanciesPage() {
               <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
                 <Users className="w-10 h-10 text-slate-400" />
               </div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">No tenants yet</h2>
-              <p className="text-slate-500 mb-6">Add a property first, then invite tenants</p>
-              <Link href="/properties">
-                <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]">
-                  <Building2 className="w-4 h-4" />
-                  View Properties
-                </Button>
-              </Link>
+              {hasProperties ? (
+                <>
+                  <h2 className="text-xl font-semibold text-slate-800 mb-2">No tenants yet</h2>
+                  <p className="text-slate-500 mb-6">Invite your first tenant to one of your properties</p>
+                  <Link href={`/properties/${firstPropertyId}`}>
+                    <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]">
+                      <UserPlus className="w-4 h-4" />
+                      Invite Tenant
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-xl font-semibold text-slate-800 mb-2">No tenants yet</h2>
+                  <p className="text-slate-500 mb-6">Add a property first, then invite tenants</p>
+                  <Link href="/properties/new">
+                    <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]">
+                      <Building2 className="w-4 h-4" />
+                      Add Property
+                    </Button>
+                  </Link>
+                </>
+              )}
             </motion.div>
           ) : (
             <div className="grid gap-4">
