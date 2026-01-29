@@ -354,7 +354,7 @@ export default function TenanciesPage() {
           <h1 className="text-2xl font-bold text-slate-800">Tenants</h1>
           <p className="text-sm text-slate-500">Manage your tenants</p>
         </div>
-        {hasProperties && (
+        {hasProperties && tenancies.length > 0 && (
           <Button 
             onClick={openAddModal}
             className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]"
