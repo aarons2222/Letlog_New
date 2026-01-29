@@ -279,7 +279,7 @@ export default function TenanciesPage() {
       setFirstPropertyId(propsData[0].id);
 
       // Fetch tenancies with invitations via API (bypasses RLS issues)
-      const res = await fetch('/api/tenancies/list');
+      const res = await fetch('/api/tenancies/list', { credentials: 'include' });
       const { data: enriched, error } = await res.json();
 
       if (error) {
