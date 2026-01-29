@@ -224,8 +224,8 @@ export default function TenanciesPage() {
       {/* Page Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Tenancies</h1>
-          <p className="text-sm text-slate-500">Manage your tenancy agreements</p>
+          <h1 className="text-2xl font-bold text-slate-800">Tenants</h1>
+          <p className="text-sm text-slate-500">Manage your tenants</p>
         </div>
       </div>
           {tenancies.length === 0 ? (
@@ -237,8 +237,8 @@ export default function TenanciesPage() {
               <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
                 <Users className="w-10 h-10 text-slate-400" />
               </div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">No tenancies yet</h2>
-              <p className="text-slate-500 mb-6">Invite tenants to your properties to create tenancies</p>
+              <h2 className="text-xl font-semibold text-slate-800 mb-2">No tenants yet</h2>
+              <p className="text-slate-500 mb-6">Add a property first, then invite tenants</p>
               <Link href="/properties">
                 <Button className="gap-2 bg-gradient-to-r from-[#E8998D] to-[#F4A261]">
                   <Building2 className="w-4 h-4" />

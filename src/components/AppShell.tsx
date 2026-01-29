@@ -27,7 +27,7 @@ import {
 const allNavItems: { href: string; icon: React.ElementType; label: string }[] = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/properties", icon: Building2, label: "Properties" },
-  { href: "/tenancies", icon: Users, label: "Tenancies" },
+  { href: "/tenancies", icon: Users, label: "Tenants" },
   { href: "/issues", icon: Wrench, label: "Maintenance" },
   { href: "/tenders", icon: Briefcase, label: "Jobs" },
   { href: "/compliance", icon: AlertTriangle, label: "Compliance" },
