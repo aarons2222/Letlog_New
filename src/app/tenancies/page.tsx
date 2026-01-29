@@ -347,7 +347,7 @@ export default function TenanciesPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="">
       {/* Page Header */}
       <div className="flex justify-between items-center mb-6">
         <div>

@@ -211,7 +211,7 @@ export default function PropertyDetailPage() {
         {/* Property Overview */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="border-0 shadow-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur">
-            <CardContent className="p-6">
+            <CardContent className="">
               <div className="flex items-start gap-6">
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/40 flex items-center justify-center flex-shrink-0">
                   <Home className="w-10 h-10 text-blue-500 dark:text-blue-400" />

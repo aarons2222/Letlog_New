@@ -492,7 +492,7 @@ export default function ReviewsPage() {
                 <div className="grid gap-4">
                   {pendingLandlordReviews.map((item) => (
                     <Card key={item.id} className="rounded-2xl">
-                      <CardContent className="p-6">
+                      <CardContent className="">
                         <div className="flex items-start justify-between">
                           <div>
                             <h3 className="font-semibold text-slate-900">{item.landlordName}</h3>
@@ -547,7 +547,7 @@ export default function ReviewsPage() {
                 <div className="grid gap-4">
                   {pendingContractorReviews.map((item) => (
                     <Card key={item.id} className="rounded-2xl">
-                      <CardContent className="p-6">
+                      <CardContent className="">
                         <div className="flex items-start justify-between">
                           <div>
                             <h3 className="font-semibold text-slate-900">{item.contractorName}</h3>
@@ -614,7 +614,7 @@ export default function ReviewsPage() {
             ) : (
               givenReviews.map((review) => (
                 <Card key={review.id} className="rounded-2xl">
-                  <CardContent className="p-6">
+                  <CardContent className="">
                     <div className="flex items-start gap-4">
                       <div
                         className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -657,7 +657,7 @@ export default function ReviewsPage() {
             ) : (
               receivedReviews.map((review) => (
                 <Card key={review.id} className="rounded-2xl">
-                  <CardContent className="p-6">
+                  <CardContent className="">
                     <div className="flex items-start gap-4">
                       <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
                         <User className="w-5 h-5 text-slate-600" />

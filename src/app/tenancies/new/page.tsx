@@ -143,7 +143,7 @@ export default function AddTenantPage() {
 
   if (properties.length === 0) {
     return (
-      <div className="p-6">
+      <div className="">
         <div className="max-w-md mx-auto text-center py-16">
           <h1 className="text-2xl font-bold text-slate-800 mb-4">No Properties Yet</h1>
           <p className="text-slate-500 mb-6">Add a property before inviting tenants</p>

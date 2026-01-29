@@ -386,7 +386,7 @@ export default function IssueDetailPage() {
           {/* Details */}
           <motion.div variants={itemVariants}>
             <Card className="border-0 shadow-lg bg-white/70 dark:bg-slate-900/70 backdrop-blur">
-              <CardContent className="p-6">
+              <CardContent className="">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">
@@ -418,7 +418,7 @@ export default function IssueDetailPage() {
           {/* Timeline */}
           <motion.div variants={itemVariants}>
             <Card className="border-0 shadow-lg bg-white/70 dark:bg-slate-900/70 backdrop-blur">
-              <CardContent className="p-6">
+              <CardContent className="">
                 <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
                   Activity

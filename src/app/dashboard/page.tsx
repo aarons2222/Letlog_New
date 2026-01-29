@@ -325,7 +325,7 @@ export default function DashboardPage() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Card className="p-6">
+        <Card className="">
           <p className="text-red-500 mb-4">{error}</p>
           <Button onClick={() => window.location.reload()}>Retry</Button>
         </Card>
@@ -334,7 +334,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="">
           <AnimatePresence mode="wait">
             {isLoading ? (
               <LoadingSkeleton key="loading" />
